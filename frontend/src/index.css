@@ -447,3 +447,46 @@ body.mesh-animated .liquid-orb-4 {
     min-height: 400px !important;
   }
 }
+
+/* --------------------------------------------------------------------------
+   6. Responsive: Laptops & Notebooks
+      Target: 13", 14", 15.6" Laptops (MacBook Air/Pro 13/14, Lenovo ThinkPad,
+              Dell XPS 13/15, HP Pavilion/Envy, ASUS ZenBook, Surface Laptop)
+      Resolutions: 1280x800, 1366x768, 1440x900, 1536x864, and 1080p @ 125%/150% scaling
+      (Viewport width: 1025px up to 1440px)
+   -------------------------------------------------------------------------- */
+@media screen and (min-width: 1025px) and (max-width: 1440px) {
+  /* Fluid and comfortable padding on laptops */
+  main {
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
+    padding-top: 1.25rem !important;
+    padding-bottom: 2rem !important;
+    gap: 1.25rem !important;
+  }
+
+  /* Compact header on laptops to maximize vertical space */
+  header {
+    padding-top: 0.65rem !important;
+    padding-bottom: 0.65rem !important;
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
+  }
+
+  /* Compact metrics panel on laptops */
+  .glass-panel {
+    padding: 0.85rem 1.15rem !important;
+  }
+
+  /* Ensure day columns and task cards maintain crisp, readable dimensions */
+  .schedule-column {
+    min-height: 430px !important;
+    padding: 0.75rem 0.65rem !important;
+    border-radius: 0.85rem !important;
+  }
+
+  .task-item-card {
+    padding: 0.65rem 0.65rem !important;
+    border-radius: 0.75rem !important;
+  }
+}

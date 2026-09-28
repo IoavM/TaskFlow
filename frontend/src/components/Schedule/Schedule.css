@@ -1,3 +1,28 @@
+.schedule-week-scroll-container {
+  width: 100%;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.schedule-week-scroll-container::-webkit-scrollbar {
+  height: 6px;
+}
+
+.schedule-week-scroll-container::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 9999px;
+}
+
+.schedule-week-scroll-container::-webkit-scrollbar-thumb {
+  background: rgba(0, 82, 255, 0.25);
+  border-radius: 9999px;
+}
+
+.schedule-week-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 82, 255, 0.45);
+}
+
 .schedule-column {
   background: rgba(255, 255, 255, 0.75);
   backdrop-filter: blur(16px);
@@ -30,6 +55,28 @@
   opacity: 0.7;
   background: rgba(248, 250, 252, 0.8);
   border-color: #E2E8F0;
+}
+
+/* ==========================================================================
+   Responsive: Laptops & Notebooks
+   Target: 13", 14", 15.6" Laptops (1366x768, 1440x900, 1536x864, MacBook Air/Pro, Windows 125%-150% scaling)
+   Viewport width: 1024px to 1440px
+   ========================================================================== */
+@media screen and (min-width: 1024px) and (max-width: 1440px) {
+  .schedule-week-grid {
+    min-width: 960px; /* Guarantees each day column has >= 135px comfortable readable width */
+  }
+
+  .schedule-column {
+    min-height: 430px;
+    padding: 0.75rem 0.65rem;
+    border-radius: 0.85rem;
+  }
+
+  .task-item-card {
+    padding: 0.65rem 0.65rem;
+    border-radius: 0.75rem;
+  }
 }
 
 /* ==========================================================================

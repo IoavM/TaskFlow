@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, LogOut, CheckCircle2, ListTodo, Sparkles, LayoutGrid, Calendar, Palette } from 'lucide-react';
+import { Plus, LogOut, CheckCircle2, ListTodo, Sparkles, LayoutGrid, Calendar, Palette, PanelLeft, PanelLeftClose } from 'lucide-react';
 import { Schedule } from '../components/Schedule/Schedule';
 import { HourlyCalendar } from '../components/HourlyCalendar/HourlyCalendar';
 import { MiniCalendar } from '../components/MiniCalendar/MiniCalendar';
@@ -22,6 +22,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'columns' | 'calendar'>('columns');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const currentUser = api.getCurrentStoredUser();
 
@@ -150,26 +151,48 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
         </div>
       </header>
 
-      {/* Main Workspace Layout (Fluid width for large monitors, Sidebar on LEFT, Schedule on RIGHT) */}
-      <main className="relative z-10 flex-1 w-full max-w-none px-4 sm:px-6 lg:px-8 xl:px-10 py-6 grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+      {/* Main Workspace Layout (Fluid width for large monitors, optimized compact width for laptops) */}
+      <main className="relative z-10 flex-1 w-full max-w-none px-3 sm:px-6 lg:px-6 xl:px-8 2xl:px-10 py-5 flex flex-col lg:flex-row gap-5 items-start">
         {/* LEFT COLUMN: MiniCalendar and Sidebar Options (Music + Autonomous Gemini) */}
-        <aside className="xl:col-span-4 2xl:col-span-3 space-y-5">
-          <MiniCalendar
-            selectedDate={selectedDate}
-            onSelectDate={(date) => setSelectedDate(date)}
-          />
+        {isSidebarOpen && (
+          <aside className="w-full lg:w-[280px] xl:w-[290px] 2xl:w-[320px] shrink-0 space-y-4">
+            <MiniCalendar
+              selectedDate={selectedDate}
+              onSelectDate={(date) => setSelectedDate(date)}
+            />
 
-          <SidebarOptions
-            onDirectAICreate={handleDirectAICreate}
-            onOpenManualModal={handleOpenCreateModal}
-          />
-        </aside>
+            <SidebarOptions
+              onDirectAICreate={handleDirectAICreate}
+              onOpenManualModal={handleOpenCreateModal}
+            />
+          </aside>
+        )}
 
         {/* RIGHT COLUMN: Metrics Banner, View Switchers, and Schedule/Calendar */}
-        <div className="xl:col-span-8 2xl:col-span-9 space-y-5 min-w-0">
+        <div className="flex-1 w-full min-w-0 space-y-4">
           {/* Quick Metrics & View Toggle Banner */}
-          <div className="p-4 rounded-2xl glass-panel flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-6">
+          <div className="p-3.5 sm:p-4 rounded-2xl glass-panel flex flex-wrap items-center justify-between gap-3 sm:gap-4">
+            <div className="flex items-center gap-4 sm:gap-6">
+              {/* Sidebar Collapse/Expand Toggle (for laptop and desktop space optimization) */}
+              <button
+                type="button"
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/85 hover:bg-white text-slate-700 border border-slate-200/80 hover:border-slate-300 text-xs font-semibold transition-all shadow-2xs"
+                title={isSidebarOpen ? "Ocultar panel lateral para ganar espacio" : "Mostrar panel lateral"}
+              >
+                {isSidebarOpen ? (
+                  <>
+                    <PanelLeftClose className="w-3.5 h-3.5 text-[#0052FF]" />
+                    <span className="hidden xl:inline">Ocultar Lateral</span>
+                  </>
+                ) : (
+                  <>
+                    <PanelLeft className="w-3.5 h-3.5 text-[#0052FF]" />
+                    <span>Ver Lateral</span>
+                  </>
+                )}
+              </button>
+
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-blue-50/90 text-[#0052FF] border border-blue-100">
                   <ListTodo className="w-4 h-4" />
