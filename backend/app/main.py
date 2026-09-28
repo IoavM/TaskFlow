@@ -1,3 +1,10 @@
+import sys
+import os
+
+backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,7 +17,11 @@ from app.api.router import api_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Auto-create tables on startup (works on both Neon PostgreSQL and SQLite fallback)
-    Base.metadata.create_all(bind=engine)
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("Database tables verified successfully.")
+    except Exception as e:
+        print(f"Warning: Database table auto-creation skipped or delayed: {e}")
     yield
 
 app = FastAPI(
