@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { CheckCircle2, Circle, Clock, Trash2, Calendar as CalIcon, Repeat, Palette } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { CheckCircle2, Circle, Clock, Trash2, Calendar as CalIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Task, WorkBlock } from '../../types';
-import { getTaskColorTheme, TASK_COLORS } from '../../utils/taskColors';
+import { getTaskColorTheme } from '../../utils/taskColors';
 import config from './Schedule.json';
 import './Schedule.css';
 
@@ -20,10 +20,22 @@ export const Schedule: React.FC<ScheduleProps> = ({
   onToggleBlock,
   onDeleteTask,
   onEditTask,
-  onUpdateColor,
 }) => {
-  const [activeColorTaskId, setActiveColorTaskId] = useState<number | null>(null);
   const [mobileActiveDay, setMobileActiveDay] = useState<string>('all');
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleScrollLeft = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: -300, behavior: 'smooth' });
+    }
+  };
+
+  const handleScrollRight = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: 300, behavior: 'smooth' });
+    }
+  };
+
   // Compute the 7 dates for the week containing selectedDate
   const getWeekDates = (baseDate: Date) => {
     const d = new Date(baseDate);
@@ -105,7 +117,7 @@ export const Schedule: React.FC<ScheduleProps> = ({
           const blk = task.work_blocks[0];
           items.push({ task, block: blk, isDeadline: !blk });
         }
-        return; // Never fall through to other weeks or months
+        return;
       }
 
       if (task.created_at) {
@@ -122,8 +134,8 @@ export const Schedule: React.FC<ScheduleProps> = ({
   };
 
   return (
-    <div className="space-y-4">
-      {/* Mobile Day Tabs Bar (Responsive iPhone 14/15/16 Pro Max, Galaxy S23/S24 Ultra, Pixel 8/9 Pro) */}
+    <div className="space-y-3">
+      {/* Mobile Day Tabs Bar */}
       <div className="flex md:hidden items-center gap-1.5 overflow-x-auto pb-1.5 scrollbar-none px-0.5">
         <button
           type="button"
@@ -160,8 +172,34 @@ export const Schedule: React.FC<ScheduleProps> = ({
         })}
       </div>
 
-      <div className="schedule-week-scroll-container">
-        <div className="schedule-week-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-2.5 lg:gap-3">
+      {/* Desktop & Laptop Horizontal Scroll Navigation Bar */}
+      <div className="hidden md:flex items-center justify-between px-1">
+        <span className="text-xs font-semibold text-slate-500">
+          Semana Completa • Desplazamiento horizontal fluido
+        </span>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={handleScrollLeft}
+            className="p-1.5 rounded-xl bg-white/85 hover:bg-white text-slate-600 hover:text-slate-900 border border-slate-200/80 hover:border-slate-300 shadow-2xs transition-all cursor-pointer"
+            title="Desplazar a días anteriores"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={handleScrollRight}
+            className="p-1.5 rounded-xl bg-white/85 hover:bg-white text-slate-600 hover:text-slate-900 border border-slate-200/80 hover:border-slate-300 shadow-2xs transition-all cursor-pointer"
+            title="Desplazar a días siguientes"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Spacious Horizontal Week Board */}
+      <div ref={scrollContainerRef} className="schedule-week-scroll-container">
+        <div className="schedule-week-flex">
           {weekDays.map((col) => {
             const isHiddenOnMobile = mobileActiveDay !== 'all' && mobileActiveDay !== col.key;
             const dayItems = getTasksForDay(col.key, col.date);
@@ -173,168 +211,132 @@ export const Schedule: React.FC<ScheduleProps> = ({
                   col.isSelected ? 'ring-2 ring-[#0052FF]/30 bg-blue-50/20' : ''
                 }`}
               >
-              <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-slate-200/60">
-                <div className="min-w-0">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 truncate">
-                    {col.label}
-                  </h3>
-                  <span className="text-[10px] text-slate-400 font-medium">
-                    {col.dayNumber} {col.monthShort}
+                {/* Column Header */}
+                <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200/60">
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800">
+                      {col.label}
+                    </h3>
+                    <span className="text-xs text-slate-400 font-medium">
+                      {col.dayNumber} {col.monthShort}
+                    </span>
+                  </div>
+                  <span
+                    className={`text-xs font-bold px-2.5 py-0.5 rounded-full shrink-0 ${
+                      col.isSelected
+                        ? 'bg-[#0052FF] text-white shadow-xs'
+                        : 'bg-blue-50 text-[#0052FF] border border-blue-100'
+                    }`}
+                  >
+                    {dayItems.length}
                   </span>
                 </div>
-                <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                    col.isSelected
-                      ? 'bg-[#0052FF] text-white'
-                      : 'bg-blue-50 text-[#0052FF] border border-blue-100'
-                  }`}
-                >
-                  {dayItems.length}
-                </span>
-              </div>
 
-              <div className="space-y-2 flex-1 overflow-y-auto pt-1 px-0.5 pb-1">
-                {dayItems.length === 0 ? (
-                  <div className="h-full flex items-center justify-center p-4 text-center">
-                    <p className="text-[11px] text-slate-400 font-medium">Sin tareas</p>
-                  </div>
-                ) : (
-                  dayItems.map(({ task, block, isDeadline }, idx) => {
-                    const isCompleted = block ? block.completed : task.status === 'completed';
-                    const colorTheme = getTaskColorTheme(block?.color || task.color);
-                    const isColorMenuOpen = activeColorTaskId === task.id;
+                {/* Day Tasks List */}
+                <div className="space-y-3 flex-1 overflow-y-auto pt-1 px-0.5 pb-1">
+                  {dayItems.length === 0 ? (
+                    <div className="h-44 flex items-center justify-center p-4 text-center">
+                      <p className="text-xs text-slate-400 font-medium">Sin tareas para este día</p>
+                    </div>
+                  ) : (
+                    dayItems.map(({ task, block, isDeadline }, idx) => {
+                      const isCompleted = block ? block.completed : task.status === 'completed';
+                      const colorTheme = getTaskColorTheme(block?.color || task.color);
 
-                    return (
-                      <div
-                        key={`${task.id}-${block?.id || 'deadline'}-${idx}`}
-                        onClick={() => onEditTask(task)}
-                        className={`task-item-card cursor-pointer ${isCompleted ? 'completed' : ''}`}
-                        style={{
-                          background: isCompleted ? 'rgba(248, 250, 252, 0.85)' : colorTheme.cardBg,
-                          borderColor: isCompleted ? '#E2E8F0' : colorTheme.border,
-                          boxShadow: isCompleted ? 'none' : `0 4px 16px -2px ${colorTheme.glow}`,
-                        }}
-                        title="Clic para editar tarea"
-                      >
-                        <div className="flex items-center justify-between gap-1 mb-1.5">
-                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                            <span
-                              className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs transition-transform hover:scale-125"
-                              style={{ background: colorTheme.accent }}
-                              title={`Color: ${colorTheme.name}`}
-                            />
-                            {task.is_recurring && (
-                              <span title={`Recurrente: ${task.recurrence_rule || 'periódica'}`} className="flex items-center shrink-0">
-                                <Repeat className="w-3 h-3 text-slate-500 shrink-0" />
-                              </span>
-                            )}
-                            <span
-                              className="text-xs font-semibold text-slate-800 truncate"
-                              style={{ color: isCompleted ? undefined : '#0F172A' }}
-                              title={task.title}
-                            >
-                              {task.title}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-0.5 shrink-0">
-                            {onUpdateColor && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveColorTaskId(isColorMenuOpen ? null : task.id);
+                      return (
+                        <div
+                          key={`${task.id}-${block?.id || 'deadline'}-${idx}`}
+                          onClick={() => onEditTask(task)}
+                          className={`task-item-card cursor-pointer ${isCompleted ? 'completed' : ''}`}
+                          style={{
+                            background: isCompleted ? 'rgba(248, 250, 252, 0.9)' : colorTheme.cardBg,
+                            borderColor: isCompleted ? '#E2E8F0' : colorTheme.border,
+                            boxShadow: isCompleted ? 'none' : `0 4px 18px -2px ${colorTheme.glow}`,
+                          }}
+                          title="Clic para editar detalles de la tarea"
+                        >
+                          {/* Card Header: Color indicator + Prominent Task Name + Quick Delete */}
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                              <span
+                                className="w-3 h-3 rounded-full shrink-0 mt-0.5 shadow-xs"
+                                style={{ background: colorTheme.accent }}
+                                title={`Color: ${colorTheme.name}`}
+                              />
+                              <h4
+                                className="text-[13px] font-bold leading-snug break-words"
+                                style={{
+                                  textDecoration: isCompleted ? 'line-through' : 'none',
+                                  color: isCompleted ? '#94A3B8' : '#0F172A',
                                 }}
-                                className="text-slate-400 hover:text-slate-700 transition-colors p-1 rounded"
-                                title="Cambiar color de la tarea"
                               >
-                                <Palette className="w-3.5 h-3.5" />
-                              </button>
-                            )}
+                                {task.title || 'Tarea sin título'}
+                              </h4>
+                            </div>
+
+                            {/* Quick Delete Only */}
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onDeleteTask(task.id);
                               }}
-                              className="text-slate-300 hover:text-red-500 transition-colors p-1 rounded"
-                              title="Eliminar tarea"
+                              className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1 rounded-lg transition-colors shrink-0 -mr-1 -mt-0.5"
+                              title="Eliminar tarea rápidamente"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
-                        </div>
 
-                        {/* Quick Color Swatches Bar */}
-                        {isColorMenuOpen && onUpdateColor && (
-                          <div
-                            className="my-2 p-1.5 rounded-lg bg-white/95 border border-slate-200/80 shadow-xs flex items-center justify-between gap-1"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {Object.values(TASK_COLORS).map((c) => (
+                          {/* Optional Description */}
+                          {task.description && (
+                            <p className="text-xs text-slate-500 line-clamp-2 mb-2.5 pl-5.5 leading-relaxed">
+                              {task.description}
+                            </p>
+                          )}
+
+                          {/* Card Footer: Time on Left, Quick Complete Checkbox on Right */}
+                          <div className="pt-2.5 border-t border-slate-200/60 flex items-center justify-between gap-2 mt-auto">
+                            {block ? (
+                              <div className="flex items-center gap-1.5 text-slate-700 font-mono text-xs whitespace-nowrap">
+                                <Clock className="w-3.5 h-3.5 shrink-0" style={{ color: colorTheme.accent }} />
+                                <span className="font-semibold tabular-nums">
+                                  {block.start_time || '14:00'} - {block.end_time || '16:00'}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 text-amber-700 font-medium text-xs whitespace-nowrap">
+                                <CalIcon className="w-3.5 h-3.5 shrink-0" />
+                                <span>Entrega final</span>
+                              </div>
+                            )}
+
+                            {block && block.id < 10000 && (
                               <button
-                                key={c.id}
                                 type="button"
-                                onClick={() => {
-                                  onUpdateColor(task.id, c.id);
-                                  setActiveColorTaskId(null);
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onToggleBlock(block.id, block.completed);
                                 }}
-                                title={c.name}
-                                className={`w-5 h-5 rounded-full transition-transform cursor-pointer ${
-                                  (block?.color || task.color) === c.id ? 'ring-2 ring-slate-800 scale-110' : 'hover:scale-115'
-                                }`}
-                                style={{ background: c.gradient }}
-                              />
-                            ))}
+                                className="p-1 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors shrink-0 ml-auto cursor-pointer"
+                                title={block.completed ? "Marcar como pendiente" : "Marcar como completada"}
+                              >
+                                {block.completed ? (
+                                  <CheckCircle2 className="w-5 h-5 text-emerald-500 fill-emerald-50" />
+                                ) : (
+                                  <Circle className="w-5 h-5 text-slate-300 hover:text-slate-500" />
+                                )}
+                              </button>
+                            )}
                           </div>
-                        )}
-
-                        {task.description && (
-                          <p className="text-[11px] text-slate-500 line-clamp-2 mb-1.5 leading-relaxed">
-                            {task.description}
-                          </p>
-                        )}
-
-                        <div className="pt-2 border-t border-slate-200/50 flex items-center justify-between gap-1 text-[11px]">
-                          {block ? (
-                            <div className="flex items-center gap-1 text-slate-600 font-mono text-[10px] whitespace-nowrap shrink-0">
-                              <Clock className="w-3 h-3 shrink-0" style={{ color: colorTheme.accent }} />
-                              <span className="tabular-nums font-medium tracking-tight">
-                                {block.start_time || '14:00'} - {block.end_time || '16:00'}
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1 text-amber-600 font-medium text-[10px] whitespace-nowrap shrink-0">
-                              <CalIcon className="w-3 h-3 shrink-0" />
-                              <span>Entrega final</span>
-                            </div>
-                          )}
-
-                          {block && block.id < 10000 && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onToggleBlock(block.id, block.completed);
-                              }}
-                              className="flex items-center p-0.5 rounded text-slate-600 hover:opacity-80 transition-colors shrink-0 ml-auto"
-                              title={block.completed ? "Marcar como pendiente" : "Marcar como completada"}
-                            >
-                              {block.completed ? (
-                                <CheckCircle2 className="w-4 h-4 text-emerald-500 fill-emerald-50" />
-                              ) : (
-                                <Circle className="w-4 h-4 text-slate-300 hover:text-slate-500" />
-                              )}
-                            </button>
-                          )}
                         </div>
-                      </div>
-                    );
-                  })
-                )}
+                      );
+                    })
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
         </div>
       </div>
     </div>
