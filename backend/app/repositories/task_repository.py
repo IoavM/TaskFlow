@@ -39,7 +39,7 @@ class TaskRepository:
         self.db.refresh(task)
         return task
 
-    def update_work_block(self, block_id: int, user_id: int, completed: Optional[bool] = None, notes: Optional[str] = None) -> Optional[WorkBlock]:
+    def update_work_block(self, block_id: int, user_id: int, completed: Optional[bool] = None, notes: Optional[str] = None, color: Optional[str] = None) -> Optional[WorkBlock]:
         block = (
             self.db.query(WorkBlock)
             .join(Task)
@@ -52,6 +52,8 @@ class TaskRepository:
             block.completed = completed
         if notes is not None:
             block.notes = notes
+        if color is not None:
+            block.color = color
         self.db.commit()
         self.db.refresh(block)
         return block

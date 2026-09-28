@@ -14,6 +14,7 @@ class Task(Base):
     is_recurring = Column(Boolean, default=False)
     recurrence_rule = Column(String(50), nullable=True)
     status = Column(String(50), default="pending")  # pending, in_progress, completed
+    color = Column(String(50), default="blue")  # blue, purple, emerald, amber, rose, cyan, indigo, etc.
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     owner = relationship("User", back_populates="tasks")

@@ -20,11 +20,11 @@ function getAuthHeader(): HeadersInit {
 
 export const api = {
   // Authentication
-  async register(email: string, phone: string, password: string): Promise<AuthResponse> {
+  async register(email: string, phone: string, password: string, first_name?: string, last_name?: string): Promise<AuthResponse> {
     const res = await fetch(`${BASE_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, phone, password }),
+      body: JSON.stringify({ email, phone, password, first_name, last_name }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: 'Error en el registro' }));
@@ -103,16 +103,28 @@ export const api = {
     return res.json();
   },
 
-  async toggleBlockStatus(blockId: number, completed: boolean): Promise<void> {
+  async toggleBlockStatus(blockId: number, completed: boolean, color?: string): Promise<void> {
     const res = await fetch(`${BASE_URL}/tasks/blocks/${blockId}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
         ...getAuthHeader(),
       },
-      body: JSON.stringify({ completed }),
+      body: JSON.stringify({ completed, ...(color ? { color } : {}) }),
     });
     if (!res.ok) throw new Error('Error al actualizar el bloque de trabajo');
+  },
+
+  async updateWorkBlockColor(blockId: number, color: string): Promise<void> {
+    const res = await fetch(`${BASE_URL}/tasks/blocks/${blockId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+      },
+      body: JSON.stringify({ color }),
+    });
+    if (!res.ok) throw new Error('Error al actualizar el color del bloque');
   },
 
   async deleteTask(taskId: number): Promise<void> {

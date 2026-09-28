@@ -31,6 +31,20 @@
     "switchLink": "Iniciar sesión",
     "fields": [
       {
+        "id": "first_name",
+        "label": "Nombre",
+        "type": "text",
+        "placeholder": "Tu nombre (ej. Juan)",
+        "required": true
+      },
+      {
+        "id": "last_name",
+        "label": "Apellido",
+        "type": "text",
+        "placeholder": "Tu apellido (ej. Pérez)",
+        "required": false
+      },
+      {
         "id": "email",
         "label": "Correo Electrónico",
         "type": "email",

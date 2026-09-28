@@ -1,6 +1,8 @@
 export interface User {
   id: number;
   email: string;
+  first_name?: string;
+  last_name?: string;
   phone?: string;
   created_at: string;
 }
@@ -14,6 +16,7 @@ export interface WorkBlock {
   block_date?: string;
   completed: boolean;
   notes?: string;
+  color?: string;
 }
 
 export interface Task {
@@ -25,6 +28,7 @@ export interface Task {
   is_recurring: boolean;
   recurrence_rule?: string;
   status: 'pending' | 'in_progress' | 'completed';
+  color?: string;
   created_at: string;
   work_blocks: WorkBlock[];
 }
@@ -35,6 +39,7 @@ export interface WorkBlockInput {
   end_time?: string;
   block_date?: string;
   notes?: string;
+  color?: string;
 }
 
 export interface TaskCreateInput {
@@ -43,6 +48,7 @@ export interface TaskCreateInput {
   deadline?: string;
   is_recurring: boolean;
   recurrence_rule?: string;
+  color?: string;
   work_blocks: WorkBlockInput[];
 }
 

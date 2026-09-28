@@ -85,8 +85,9 @@ def update_work_block(
     block = service.update_block_status(
         block_id=block_id,
         user_id=current_user.id,
-        completed=block_in.completed if block_in.completed is not None else False,
-        notes=block_in.notes
+        completed=block_in.completed,
+        notes=block_in.notes,
+        color=block_in.color
     )
     if not block:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bloque de trabajo no encontrado")

@@ -9,6 +9,7 @@ class WorkBlockBase(BaseModel):
     block_date: Optional[datetime] = None
     completed: bool = False
     notes: Optional[str] = None
+    color: Optional[str] = None
 
 class WorkBlockCreate(WorkBlockBase):
     pass
@@ -18,6 +19,7 @@ class WorkBlockUpdate(BaseModel):
     notes: Optional[str] = None
     start_time: Optional[str] = None
     end_time: Optional[str] = None
+    color: Optional[str] = None
 
 class WorkBlockResponse(WorkBlockBase):
     id: int

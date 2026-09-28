@@ -17,6 +17,8 @@ class UserRepository:
     def create(self, user_in: UserCreate) -> User:
         user = User(
             email=user_in.email,
+            first_name=user_in.first_name,
+            last_name=user_in.last_name,
             phone=user_in.phone,
             password_hash=get_password_hash(user_in.password)
         )

@@ -24,8 +24,13 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
   const handleConfirmRegister = async () => {
     if (!pendingData) return;
     try {
-      setLoading(true);
-      await api.register(pendingData.email, pendingData.phone || '', pendingData.password);
+      await api.register(
+        pendingData.email,
+        pendingData.phone || '',
+        pendingData.password,
+        pendingData.first_name || '',
+        pendingData.last_name || ''
+      );
       setShowTerms(false);
       onRegisterSuccess();
     } catch (err) {

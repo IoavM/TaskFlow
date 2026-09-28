@@ -14,6 +14,7 @@ import { Task, TaskCreateInput, WorkBlockInput } from '../../types';
 import { api } from '../../services/api';
 import config from './TaskModal.json';
 import { TimePicker } from '../TimePicker/TimePicker';
+import { TASK_COLORS } from '../../utils/taskColors';
 import './TaskModal.css';
 
 interface TaskModalProps {
@@ -37,6 +38,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [description, setDescription] = useState('');
   const [taskType, setTaskType] = useState<'single' | 'recurring'>('single');
   const [recurrenceRule, setRecurrenceRule] = useState('semanal');
+  const [color, setColor] = useState('blue');
 
   // Single Task State (Date + Unified Time Range)
   const [singleDate, setSingleDate] = useState('');
@@ -111,6 +113,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         } else {
           setSelectedDays(WORK_DAYS);
         }
+
+        setColor(taskToEdit.color || 'blue');
       } else {
         // Defaults for new task
         setTitle('');
@@ -127,6 +131,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         setIsDaysExpanded(true);
         setTaskType('single');
         setRecurrenceRule('semanal');
+        setColor('blue');
         setAiPrompt('');
       }
       setError(null);
@@ -216,6 +221,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             start_time: singleStartTime,
             end_time: singleEndTime,
             notes: title,
+            color: color,
           },
         ];
       } else {
@@ -231,6 +237,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           start_time: dailyStartTime,
           end_time: dailyEndTime,
           notes: title,
+          color: color,
         }));
       }
 
@@ -240,6 +247,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         deadline: formattedDeadline,
         is_recurring: isRecurring,
         recurrence_rule: isRecurring ? recurrenceRule : undefined,
+        color: color,
         work_blocks: finalBlocks,
       };
 
@@ -336,6 +344,48 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               placeholder="Notas y objetivos de la tarea..."
               className="glass-input w-full text-sm px-3.5 py-2 rounded-lg resize-none"
             />
+          </div>
+
+          {/* Selector de Color y Liquid Glass */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700">
+                Color y Efecto Liquid Glass
+              </label>
+              <span
+                className="text-[11px] font-semibold px-2 py-0.5 rounded-full transition-all"
+                style={{
+                  background: TASK_COLORS[color]?.badgeBg || '#DBEAFE',
+                  color: TASK_COLORS[color]?.accent || '#0052FF',
+                }}
+              >
+                {TASK_COLORS[color]?.name || 'Azul Eléctrico'}
+              </span>
+            </div>
+            <div className="grid grid-cols-7 gap-2 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/70">
+              {Object.values(TASK_COLORS).map((c) => {
+                const isSelected = color === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setColor(c.id)}
+                    title={c.name}
+                    className={`relative h-9 rounded-xl flex items-center justify-center transition-all duration-200 cursor-pointer ${
+                      isSelected
+                        ? 'ring-2 ring-offset-2 ring-slate-800 scale-105 shadow-md'
+                        : 'hover:scale-105 hover:opacity-100 opacity-80'
+                    }`}
+                    style={{
+                      background: c.gradient,
+                      boxShadow: isSelected ? `0 4px 14px ${c.glow}` : undefined,
+                    }}
+                  >
+                    {isSelected && <Check className="w-4 h-4 text-white drop-shadow-sm" />}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Selector de Tipo: Tarea Única vs Recurrente */}

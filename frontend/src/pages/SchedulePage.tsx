@@ -75,6 +75,17 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
     await loadTasks();
   };
 
+  const handleUpdateTaskColor = async (taskId: number, newColor: string) => {
+    try {
+      await api.updateTask(taskId, { color: newColor });
+      await loadTasks();
+    } catch (err) {
+      console.error('Error al actualizar color de tarea:', err);
+    }
+  };
+
+  const userDisplayName = currentUser?.first_name?.trim() || currentUser?.email?.split('@')[0] || 'Usuario';
+
   // Metrics
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((t) => t.status === 'completed').length;
@@ -103,10 +114,12 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 sm:gap-3">
-          <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/80 border border-slate-200/70 shadow-2xs text-xs text-slate-700">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/85 border border-slate-200/70 shadow-2xs text-xs text-slate-700">
             <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-400" />
-            <span className="font-medium truncate max-w-[180px]">{currentUser?.email || 'Usuario'}</span>
+            <span className="font-semibold text-slate-800 truncate max-w-[110px] sm:max-w-[160px]" title={userDisplayName}>
+              {userDisplayName}
+            </span>
           </div>
 
           {/* Personalization Button */}
@@ -221,6 +234,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
               onToggleBlock={handleToggleBlock}
               onDeleteTask={handleDeleteTask}
               onEditTask={handleEditTask}
+              onUpdateColor={handleUpdateTaskColor}
             />
           ) : (
             <HourlyCalendar

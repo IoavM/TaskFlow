@@ -15,6 +15,7 @@ class TaskBuilder:
         self._deadline: Optional[datetime] = None
         self._is_recurring: bool = False
         self._recurrence_rule: Optional[str] = None
+        self._color: str = "blue"
         self._work_blocks: List[WorkBlock] = []
 
     def set_user_id(self, user_id: int) -> "TaskBuilder":
@@ -38,13 +39,19 @@ class TaskBuilder:
         self._recurrence_rule = rule if is_recurring else None
         return self
 
+    def set_color(self, color: Optional[str]) -> "TaskBuilder":
+        if color and color.strip():
+            self._color = color.strip()
+        return self
+
     def add_work_block(
         self,
         day_name: str,
         start_time: Optional[str] = None,
         end_time: Optional[str] = None,
         block_date: Optional[datetime] = None,
-        notes: Optional[str] = None
+        notes: Optional[str] = None,
+        color: Optional[str] = None
     ) -> "TaskBuilder":
         block = WorkBlock(
             day_name=day_name,
@@ -52,7 +59,8 @@ class TaskBuilder:
             end_time=end_time,
             block_date=block_date,
             completed=False,
-            notes=notes
+            notes=notes,
+            color=color or self._color
         )
         self._work_blocks.append(block)
         return self
@@ -70,7 +78,8 @@ class TaskBuilder:
             deadline=self._deadline,
             is_recurring=self._is_recurring,
             recurrence_rule=self._recurrence_rule,
-            status="pending"
+            status="pending",
+            color=self._color
         )
         task.work_blocks = self._work_blocks
         return task

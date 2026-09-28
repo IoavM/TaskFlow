@@ -31,3 +31,21 @@
   background: rgba(248, 250, 252, 0.8);
   border-color: #E2E8F0;
 }
+
+/* ==========================================================================
+   Responsive Mobile Adjustments
+   Target: iPhone 14 Pro Max, iPhone 15 Pro Max, iPhone 16 Pro Max,
+           Galaxy S23/S24 Ultra, Pixel 8/9 Pro XL, and all smartphones (max-width: 768px)
+   ========================================================================== */
+@media screen and (max-width: 768px) {
+  .schedule-column {
+    min-height: auto;
+    padding: 0.85rem;
+    border-radius: 1rem;
+  }
+
+  .task-item-card {
+    padding: 0.75rem;
+    border-radius: 0.75rem;
+  }
+}

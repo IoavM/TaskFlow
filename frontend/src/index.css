@@ -308,3 +308,142 @@ body.mesh-animated .liquid-orb-4 {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(148, 163, 184, 0.9);
 }
+
+/* ==========================================================================
+   RESPONSIVE DESIGN SYSTEM - DEVICE-TARGETED PROFILES
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Responsive: iPhone 14 Pro Max, iPhone 15 Pro Max, iPhone 16 Pro Max,
+      Samsung Galaxy S23/S24 Ultra, Google Pixel 8/9 Pro XL
+      (Screen width: up to 480px, viewport ~414px - 430px)
+   -------------------------------------------------------------------------- */
+@media screen and (max-width: 480px) {
+  header {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+    padding-top: 0.65rem !important;
+    padding-bottom: 0.65rem !important;
+  }
+
+  header h1 {
+    font-size: 0.95rem !important;
+  }
+
+  header p {
+    display: none !important;
+  }
+
+  /* Modals on iPhone Pro Max */
+  .task-modal-dialog,
+  .terms-dialog,
+  .personalization-modal-dialog {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    margin: 8px auto !important;
+    padding: 1.15rem 0.9rem !important;
+    max-height: 88vh !important;
+    border-radius: 1.25rem !important;
+  }
+
+  /* Main container touch spacing */
+  main {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+    padding-top: 1rem !important;
+    padding-bottom: 2rem !important;
+    gap: 1.25rem !important;
+  }
+
+  /* Schedule columns on mobile */
+  .schedule-column {
+    min-height: auto !important;
+    padding: 0.85rem !important;
+    border-radius: 1rem !important;
+  }
+
+  /* Task cards touch sizing */
+  .task-item-card {
+    padding: 0.75rem !important;
+    border-radius: 0.75rem !important;
+  }
+
+  /* Metrics banner wrap */
+  .glass-panel {
+    padding: 0.85rem !important;
+    border-radius: 1rem !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   2. Responsive: Standard Phones
+      Target: iPhone 12, 13, 14, 15, 16 (Standard / Pro),
+              Samsung Galaxy S21/S22/S23/S24, Google Pixel 7/8
+      (Screen width: up to 393px, viewport ~390px - 393px)
+   -------------------------------------------------------------------------- */
+@media screen and (max-width: 393px) {
+  /* Ultra-compact header */
+  header .max-w-\[110px\] {
+    max-width: 75px !important;
+  }
+
+  .auth-form-card {
+    padding: 1.5rem 1.1rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .auth-submit-btn {
+    min-height: 44px !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   3. Responsive: Compact Phones
+      Target: iPhone SE (2nd & 3rd Gen), iPhone 12/13 Mini, Galaxy A Series
+      (Screen width: up to 375px, viewport ~360px - 375px)
+   -------------------------------------------------------------------------- */
+@media screen and (max-width: 375px) {
+  header {
+    gap: 0.5rem !important;
+  }
+
+  .task-modal-dialog {
+    padding: 1rem 0.75rem !important;
+  }
+
+  .hourly-time-slot,
+  .hourly-day-slot {
+    height: 46px !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   4. Responsive: Large Phones & Phablets
+      Target: Galaxy Z Fold (Cover Screen), Surface Duo, Landscape Phones
+      (Screen width: 481px up to 768px)
+   -------------------------------------------------------------------------- */
+@media screen and (min-width: 481px) and (max-width: 768px) {
+  main {
+    padding: 1rem 1.25rem !important;
+  }
+
+  .schedule-column {
+    min-height: auto !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   5. Responsive: Tablets & Foldables Unfolded
+      Target: iPad Mini, iPad Air, iPad 10th Gen, Galaxy Tab
+      (Screen width: 769px up to 1024px)
+   -------------------------------------------------------------------------- */
+@media screen and (min-width: 769px) and (max-width: 1024px) {
+  main {
+    padding: 1.5rem !important;
+  }
+
+  .schedule-column {
+    min-height: 400px !important;
+  }
+}

@@ -9,6 +9,7 @@ class TaskBase(BaseModel):
     deadline: Optional[datetime] = None
     is_recurring: bool = False
     recurrence_rule: Optional[str] = None
+    color: Optional[str] = "blue"
 
 class TaskCreate(TaskBase):
     work_blocks: Optional[List[WorkBlockCreate]] = []
@@ -20,6 +21,7 @@ class TaskUpdate(BaseModel):
     is_recurring: Optional[bool] = None
     recurrence_rule: Optional[str] = None
     status: Optional[str] = None
+    color: Optional[str] = None
     work_blocks: Optional[List[WorkBlockCreate]] = None
 
 class TaskResponse(TaskBase):

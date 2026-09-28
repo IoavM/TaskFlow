@@ -7,7 +7,7 @@ from app.models.task import Task
 from app.models.work_block import WorkBlock
 from app.schemas.task import TaskCreate, TaskUpdate
 
-def _block_from_deadline(deadline: datetime, notes: Optional[str] = None) -> WorkBlock:
+def _block_from_deadline(deadline: datetime, notes: Optional[str] = None, color: Optional[str] = "blue") -> WorkBlock:
     days_es = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
     day_name = days_es[deadline.weekday()]
     start_t = deadline.strftime("%H:%M")
@@ -18,7 +18,8 @@ def _block_from_deadline(deadline: datetime, notes: Optional[str] = None) -> Wor
         start_time=start_t,
         end_time=end_t,
         block_date=deadline,
-        notes=notes or "Horario programado"
+        notes=notes or "Horario programado",
+        color=color or "blue"
     )
 
 class TaskService:
@@ -34,8 +35,10 @@ class TaskService:
             .set_description(task_in.description)
             .set_deadline(task_in.deadline)
             .set_recurrence(task_in.is_recurring, task_in.recurrence_rule)
+            .set_color(task_in.color or "blue")
         )
 
+        task_color = task_in.color or "blue"
         if task_in.work_blocks and len(task_in.work_blocks) > 0:
             for block in task_in.work_blocks:
                 builder.add_work_block(
@@ -43,7 +46,8 @@ class TaskService:
                     start_time=block.start_time,
                     end_time=block.end_time,
                     block_date=block.block_date,
-                    notes=block.notes
+                    notes=block.notes,
+                    color=block.color or task_color
                 )
         elif task_in.deadline:
             days_es = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
@@ -55,7 +59,8 @@ class TaskService:
                 start_time=start_t,
                 end_time=end_t,
                 block_date=task_in.deadline,
-                notes=task_in.title
+                notes=task_in.title,
+                color=task_color
             )
 
         task = builder.build()
@@ -83,7 +88,10 @@ class TaskService:
             task.recurrence_rule = task_in.recurrence_rule
         if task_in.status is not None:
             task.status = task_in.status
+        if task_in.color is not None:
+            task.color = task_in.color
 
+        effective_color = task_in.color or task.color or "blue"
         effective_deadline = task_in.deadline or task.deadline
         if task_in.work_blocks is not None and len(task_in.work_blocks) > 0:
             self.task_repo.db.query(WorkBlock).filter(WorkBlock.task_id == task.id).delete()
@@ -98,22 +106,23 @@ class TaskService:
                         end_time=b.end_time,
                         block_date=b.block_date,
                         notes=b.notes,
-                        completed=b.completed
+                        completed=b.completed,
+                        color=b.color or effective_color
                     )
                 )
         elif task_in.work_blocks is not None and len(task_in.work_blocks) == 0 and effective_deadline:
             self.task_repo.db.query(WorkBlock).filter(WorkBlock.task_id == task.id).delete()
             self.task_repo.db.flush()
             task.work_blocks.clear()
-            task.work_blocks.append(_block_from_deadline(effective_deadline, task.title))
+            task.work_blocks.append(_block_from_deadline(effective_deadline, task.title, effective_color))
         elif len(task.work_blocks) == 0 and effective_deadline:
-            task.work_blocks.append(_block_from_deadline(effective_deadline, task.title))
+            task.work_blocks.append(_block_from_deadline(effective_deadline, task.title, effective_color))
 
         return self.task_repo.save(task)
 
-    def update_block_status(self, block_id: int, user_id: int, completed: bool, notes: Optional[str] = None) -> Optional[WorkBlock]:
-        # Allows completing individual days early or recording notes
-        block = self.task_repo.update_work_block(block_id, user_id, completed=completed, notes=notes)
+    def update_block_status(self, block_id: int, user_id: int, completed: Optional[bool] = None, notes: Optional[str] = None, color: Optional[str] = None) -> Optional[WorkBlock]:
+        # Allows completing individual days early or recording notes or changing individual block color
+        block = self.task_repo.update_work_block(block_id, user_id, completed=completed, notes=notes, color=color)
         if not block:
             return None
 

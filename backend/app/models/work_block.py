@@ -14,6 +14,7 @@ class WorkBlock(Base):
     block_date = Column(DateTime(timezone=True), nullable=True)
     completed = Column(Boolean, default=False)
     notes = Column(Text, nullable=True)
+    color = Column(String(50), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     task = relationship("Task", back_populates="work_blocks")

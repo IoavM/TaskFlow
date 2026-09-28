@@ -1,6 +1,7 @@
 import React from 'react';
 import { CheckCircle2, Circle, Clock, Repeat } from 'lucide-react';
 import { Task, WorkBlock } from '../../types';
+import { getTaskColorTheme } from '../../utils/taskColors';
 import config from './HourlyCalendar.json';
 import './HourlyCalendar.css';
 
@@ -215,11 +216,20 @@ export const HourlyCalendar: React.FC<HourlyCalendarProps> = ({
 
                   const topOffset = Math.max((startDec - startHour) * slotHeight, 0);
                   const heightPx = duration * slotHeight;
+                  const colorTheme = getTaskColorTheme(block.color || task.color);
 
                   return (
                     <div
                       key={`${task.id}-${block.id}`}
-                      style={{ top: `${topOffset}px`, height: `${heightPx}px` }}
+                      style={{
+                        top: `${topOffset}px`,
+                        height: `${heightPx}px`,
+                        background: block.completed ? undefined : colorTheme.gradient,
+                        borderColor: block.completed ? 'rgba(255, 255, 255, 0.45)' : colorTheme.border,
+                        boxShadow: block.completed
+                          ? '0 4px 12px 0 rgba(16, 185, 129, 0.25)'
+                          : `0 4px 14px 0 ${colorTheme.glow}`,
+                      }}
                       onClick={() => onEditTask(task)}
                       className={`calendar-event-block ${block.completed ? 'completed' : ''}`}
                       title={`${task.title} - Clic para editar`}
