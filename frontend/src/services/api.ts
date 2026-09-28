@@ -1,7 +1,17 @@
 import { AuthResponse, Task, TaskCreateInput, AIParsedPlan, User } from '../types';
 
-const RAW_API_HOST = import.meta.env.VITE_API_URL ? String(import.meta.env.VITE_API_URL).trim() : '';
-const BASE_URL = RAW_API_HOST ? `${RAW_API_HOST.replace(/\/$/, '')}/api/v1` : '/api/v1';
+const getBaseUrl = (): string => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl && String(envUrl).trim() !== '') {
+    return `${String(envUrl).trim().replace(/\/$/, '')}/api/v1`;
+  }
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return 'http://127.0.0.1:8000/api/v1';
+  }
+  return '/api/v1';
+};
+
+const BASE_URL = getBaseUrl();
 
 function getAuthHeader(): HeadersInit {
   const token = localStorage.getItem('taskflow_token');
