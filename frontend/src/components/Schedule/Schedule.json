@@ -1,0 +1,13 @@
+{
+  "title": "Cronograma Semanal",
+  "emptyStateMessage": "No hay tareas programadas para este día.",
+  "days": [
+    { "key": "Lunes", "label": "Lunes" },
+    { "key": "Martes", "label": "Martes" },
+    { "key": "Miércoles", "label": "Miércoles" },
+    { "key": "Jueves", "label": "Jueves" },
+    { "key": "Viernes", "label": "Viernes" },
+    { "key": "Sábado", "label": "Sábado" },
+    { "key": "Domingo", "label": "Domingo" }
+  ]
+}

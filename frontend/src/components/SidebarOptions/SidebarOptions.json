@@ -1,0 +1,18 @@
+{
+  "title": "Más Opciones",
+  "subtitle": "A consideración / Integraciones",
+  "musicSection": {
+    "title": "Música & Concentración",
+    "description": "Conéctate para trabajar con foco",
+    "services": [
+      { "id": "spotify", "name": "Spotify", "color": "#1DB954" },
+      { "id": "apple", "name": "Apple Music", "color": "#FA243C" }
+    ],
+    "lofiStream": "Lo-Fi Beats Focus Session"
+  },
+  "aiSection": {
+    "title": "Asistente de Productividad",
+    "description": "Planifica tus metas con lenguaje natural",
+    "badge": "IA"
+  }
+}

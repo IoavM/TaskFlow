@@ -1,0 +1,254 @@
+import React, { useState, useEffect } from 'react';
+import { Plus, LogOut, CheckCircle2, ListTodo, Sparkles, LayoutGrid, Calendar, Palette } from 'lucide-react';
+import { Schedule } from '../components/Schedule/Schedule';
+import { HourlyCalendar } from '../components/HourlyCalendar/HourlyCalendar';
+import { MiniCalendar } from '../components/MiniCalendar/MiniCalendar';
+import { SidebarOptions } from '../components/SidebarOptions/SidebarOptions';
+import { TaskModal } from '../components/TaskModal/TaskModal';
+import { PersonalizationModal } from '../components/PersonalizationModal/PersonalizationModal';
+import { LiquidPill } from '../components/LiquidGlass/LiquidPill';
+import { api } from '../services/api';
+import type { Task } from '../types';
+
+interface SchedulePageProps {
+  onLogout: () => void;
+}
+
+export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [isPersonalizationOpen, setIsPersonalizationOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<'columns' | 'calendar'>('columns');
+
+  const currentUser = api.getCurrentStoredUser();
+
+  const loadTasks = async () => {
+    try {
+      setLoading(true);
+      const data = await api.getTasks();
+      setTasks(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTasks();
+  }, []);
+
+  const handleToggleBlock = async (blockId: number, currentCompleted: boolean) => {
+    try {
+      await api.toggleBlockStatus(blockId, !currentCompleted);
+      await loadTasks();
+    } catch (err) {
+      alert('Error al actualizar el estado del bloque.');
+    }
+  };
+
+  const handleDeleteTask = async (taskId: number) => {
+    if (!window.confirm('¿Seguro que deseas eliminar esta tarea?')) return;
+    try {
+      await api.deleteTask(taskId);
+      await loadTasks();
+    } catch (err) {
+      alert('Error al eliminar la tarea.');
+    }
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setIsTaskModalOpen(true);
+  };
+
+  const handleOpenCreateModal = () => {
+    setEditingTask(null);
+    setIsTaskModalOpen(true);
+  };
+
+  const handleDirectAICreate = async (prompt: string) => {
+    await api.createTaskDirectlyWithAI(prompt);
+    await loadTasks();
+  };
+
+  // Metrics
+  const totalTasks = tasks.length;
+  const completedTasks = tasks.filter((t) => t.status === 'completed').length;
+
+  return (
+    <div className="min-h-screen relative flex flex-col text-[#0F172A]">
+      {/* Dynamic ambient liquid mesh orbs for visible glass refraction */}
+      <div className="ambient-mesh" aria-hidden="true">
+        <div className="liquid-orb liquid-orb-1" />
+        <div className="liquid-orb liquid-orb-2" />
+        <div className="liquid-orb liquid-orb-3" />
+        <div className="liquid-orb liquid-orb-4" />
+      </div>
+
+      {/* Top Navbar with Liquid Glass */}
+      <header className="sticky top-0 z-30 bg-white/75 backdrop-blur-xl border-b border-white/80 shadow-2xs px-6 py-3.5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#0052FF] to-[#3B82F6] text-white flex items-center justify-center shadow-md shadow-blue-500/25 font-bold">
+            TF
+          </div>
+          <div>
+            <h1 className="text-base font-bold tracking-tight text-[#0F172A] font-sans">
+              TaskFlow
+            </h1>
+            <p className="text-[10px] text-[#64748B]">Cronograma y Productividad Inteligente</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/80 border border-slate-200/70 shadow-2xs text-xs text-slate-700">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-400" />
+            <span className="font-medium truncate max-w-[180px]">{currentUser?.email || 'Usuario'}</span>
+          </div>
+
+          {/* Personalization Button */}
+          <button
+            onClick={() => setIsPersonalizationOpen(true)}
+            className="px-3 py-2 rounded-xl bg-white/80 hover:bg-white text-slate-700 border border-slate-200/80 hover:border-slate-300 text-xs font-semibold transition-all flex items-center gap-1.5 shadow-2xs"
+            title="Personalizar temas y Liquid Glass"
+          >
+            <Palette className="w-3.5 h-3.5 text-[#0052FF]" />
+            <span className="hidden md:inline">Personalizar</span>
+          </button>
+
+          <button
+            onClick={handleOpenCreateModal}
+            className="px-4 py-2 rounded-xl bg-[#0052FF] text-white text-xs font-semibold hover:bg-[#0038B6] transition-all flex items-center gap-1.5 shadow-sm shadow-blue-500/30"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Crear Tarea</span>
+          </button>
+
+          <button
+            onClick={onLogout}
+            className="p-2 rounded-xl border border-slate-200/80 bg-white/70 text-slate-500 hover:text-red-600 hover:bg-white transition-colors"
+            title="Cerrar sesión"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+      </header>
+
+      {/* Main Workspace Layout (Fluid width for large monitors, Sidebar on LEFT, Schedule on RIGHT) */}
+      <main className="relative z-10 flex-1 w-full max-w-none px-4 sm:px-6 lg:px-8 xl:px-10 py-6 grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+        {/* LEFT COLUMN: MiniCalendar and Sidebar Options (Music + Autonomous Gemini) */}
+        <aside className="xl:col-span-4 2xl:col-span-3 space-y-5">
+          <MiniCalendar
+            selectedDate={selectedDate}
+            onSelectDate={(date) => setSelectedDate(date)}
+          />
+
+          <SidebarOptions
+            onDirectAICreate={handleDirectAICreate}
+            onOpenManualModal={handleOpenCreateModal}
+          />
+        </aside>
+
+        {/* RIGHT COLUMN: Metrics Banner, View Switchers, and Schedule/Calendar */}
+        <div className="xl:col-span-8 2xl:col-span-9 space-y-5 min-w-0">
+          {/* Quick Metrics & View Toggle Banner */}
+          <div className="p-4 rounded-2xl glass-panel flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-blue-50/90 text-[#0052FF] border border-blue-100">
+                  <ListTodo className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400">Total Tareas</span>
+                  <p className="text-base font-bold text-slate-800">{totalTasks}</p>
+                </div>
+              </div>
+
+              <div className="h-8 w-px bg-slate-200/80" />
+
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-emerald-50/90 text-emerald-600 border border-emerald-100">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400">Completadas</span>
+                  <p className="text-base font-bold text-emerald-600">{completedTasks}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Dashboard View Switcher (Tareas por Día vs Google Calendar) */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center p-1 rounded-xl bg-slate-100/90 border border-slate-200/70 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('columns')}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                    viewMode === 'columns'
+                      ? 'bg-white text-[#0052FF] shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span>Tareas por Día</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('calendar')}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                    viewMode === 'calendar'
+                      ? 'bg-white text-[#0052FF] shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Vista por Horas</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Schedule or Hourly Calendar Component */}
+          {loading ? (
+            <div className="p-12 text-center text-xs text-slate-400">Cargando cronograma...</div>
+          ) : viewMode === 'columns' ? (
+            <Schedule
+              tasks={tasks}
+              selectedDate={selectedDate}
+              onToggleBlock={handleToggleBlock}
+              onDeleteTask={handleDeleteTask}
+              onEditTask={handleEditTask}
+            />
+          ) : (
+            <HourlyCalendar
+              tasks={tasks}
+              selectedDate={selectedDate}
+              onToggleBlock={handleToggleBlock}
+              onEditTask={handleEditTask}
+            />
+          )}
+        </div>
+      </main>
+
+      {/* Task Creation & Editing Modal */}
+      <TaskModal
+        isOpen={isTaskModalOpen}
+        taskToEdit={editingTask}
+        onClose={() => {
+          setIsTaskModalOpen(false);
+          setEditingTask(null);
+        }}
+        onTaskCreated={loadTasks}
+      />
+
+      {/* Personalization & Liquid Glass Modal */}
+      <PersonalizationModal
+        isOpen={isPersonalizationOpen}
+        onClose={() => setIsPersonalizationOpen(false)}
+      />
+    </div>
+  );
+};

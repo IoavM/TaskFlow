@@ -1,0 +1,8 @@
+{
+  "monthNames": [
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+  ],
+  "shortDays": ["D", "L", "M", "M", "J", "V", "S"],
+  "todayLabel": "Hoy"
+}

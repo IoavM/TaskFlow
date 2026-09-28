@@ -1,0 +1,72 @@
+.task-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 60;
+  padding: 2.5rem 1.25rem;
+  overflow-y: auto;
+}
+
+.task-modal-dialog {
+  width: 100%;
+  max-width: 640px;
+  margin: auto;
+  max-height: calc(100vh - 5rem);
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 25px 60px -15px rgba(0, 82, 255, 0.15), 0 0 1px 1px rgba(255, 255, 255, 0.95);
+  border-radius: 1.25rem;
+  padding: 2rem;
+  animation: taskModalIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes taskModalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.recurrence-expansible {
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.95);
+  overflow: hidden;
+  box-shadow: 0 2px 8px -2px rgba(15, 23, 42, 0.04);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.day-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.65rem;
+  border: 1px solid #E2E8F0;
+  background: #FFFFFF;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.day-checkbox-item:hover {
+  border-color: rgba(0, 82, 255, 0.4);
+  background: rgba(240, 246, 255, 0.5);
+}
+
+.day-checkbox-item.checked {
+  border-color: #0052FF;
+  background: rgba(0, 82, 255, 0.07);
+}

@@ -1,0 +1,310 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #0052FF;
+  --color-primary-hover: #0038B6;
+  --color-neutral-dark: #0F172A;
+  --color-slate: #64748B;
+  
+  --orb-1: rgba(0, 82, 255, 0.34);
+  --orb-2: rgba(6, 182, 212, 0.30);
+  --orb-3: rgba(99, 102, 241, 0.26);
+  --orb-4: rgba(217, 70, 239, 0.22);
+
+  --glass-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.82) 0%, rgba(255, 255, 255, 0.52) 100%);
+  --glass-elevated-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0.80) 100%);
+  --glass-border: rgba(255, 255, 255, 0.85);
+  --glass-shadow: 0 16px 40px -8px rgba(0, 82, 255, 0.12), 0 2px 10px -2px rgba(15, 23, 42, 0.05);
+  --glass-blur: 30px;
+  --glass-saturate: 210%;
+}
+
+/* Theme: Sunset Amber */
+body.theme-sunset {
+  --orb-1: rgba(245, 158, 11, 0.38);
+  --orb-2: rgba(244, 63, 94, 0.32);
+  --orb-3: rgba(139, 92, 246, 0.28);
+  --orb-4: rgba(251, 146, 60, 0.25);
+  background-color: #FFF9F5 !important;
+}
+
+/* Theme: Apple Crystal Frost */
+body.theme-frost {
+  --orb-1: rgba(56, 189, 248, 0.35);
+  --orb-2: rgba(14, 165, 233, 0.28);
+  --orb-3: rgba(224, 242, 254, 0.45);
+  --orb-4: rgba(99, 102, 241, 0.22);
+  background-color: #F8FAFC !important;
+}
+
+/* Theme: Dark Obsidian */
+body.theme-obsidian {
+  --orb-1: rgba(59, 130, 246, 0.40);
+  --orb-2: rgba(168, 85, 247, 0.35);
+  --orb-3: rgba(6, 182, 212, 0.30);
+  --orb-4: rgba(99, 102, 241, 0.30);
+  background-color: #0A0F1D !important;
+  color: #F1F5F9 !important;
+  --glass-bg: linear-gradient(135deg, rgba(20, 27, 45, 0.80) 0%, rgba(13, 18, 30, 0.65) 100%);
+  --glass-elevated-bg: linear-gradient(145deg, rgba(25, 34, 56, 0.92) 0%, rgba(15, 23, 42, 0.82) 100%);
+  --glass-border: rgba(255, 255, 255, 0.15);
+  --glass-shadow: 0 20px 48px -10px rgba(0, 0, 0, 0.6), 0 0 20px 1px rgba(59, 130, 246, 0.15);
+}
+
+body.theme-obsidian header {
+  background: rgba(10, 15, 29, 0.85) !important;
+  border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+body.theme-obsidian .text-slate-800,
+body.theme-obsidian .text-slate-900,
+body.theme-obsidian [class*="text-[#0F172A]"] {
+  color: #F8FAFC !important;
+}
+
+body.theme-obsidian .text-slate-500,
+body.theme-obsidian .text-slate-600,
+body.theme-obsidian [class*="text-[#64748B]"] {
+  color: #94A3B8 !important;
+}
+
+body.theme-obsidian .bg-white\/90,
+body.theme-obsidian .bg-white\/80,
+body.theme-obsidian .bg-white\/70,
+body.theme-obsidian .bg-white\/60,
+body.theme-obsidian .bg-white {
+  background-color: rgba(22, 30, 49, 0.75) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #F1F5F9 !important;
+}
+
+body.theme-obsidian .border-slate-200,
+body.theme-obsidian .border-slate-200\/60,
+body.theme-obsidian .border-slate-200\/70,
+body.theme-obsidian .border-slate-200\/80 {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Theme: Cyber Emerald */
+body.theme-emerald {
+  --orb-1: rgba(16, 185, 129, 0.36);
+  --orb-2: rgba(52, 211, 153, 0.30);
+  --orb-3: rgba(13, 148, 136, 0.28);
+  --orb-4: rgba(132, 204, 22, 0.24);
+  background-color: #F0FDF4 !important;
+}
+
+/* Glass Intensity Levels */
+body.glass-soft {
+  --glass-blur: 16px;
+  --glass-saturate: 160%;
+}
+body.glass-medium {
+  --glass-blur: 26px;
+  --glass-saturate: 190%;
+}
+body.glass-ultra {
+  --glass-blur: 36px;
+  --glass-saturate: 230%;
+}
+
+body {
+  font-family: 'Geist', sans-serif;
+  background-color: #F2F6FC;
+  color: var(--color-neutral-dark);
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+/* DYNAMIC AMBIENT LIQUID MESH */
+.ambient-mesh {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.liquid-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.9;
+  will-change: transform;
+}
+
+.liquid-orb-1 {
+  top: -8%;
+  left: 10%;
+  width: 50vw;
+  height: 50vw;
+  background: radial-gradient(circle, var(--orb-1) 0%, rgba(255, 255, 255, 0) 70%);
+}
+
+.liquid-orb-2 {
+  bottom: -10%;
+  right: 5%;
+  width: 55vw;
+  height: 55vw;
+  background: radial-gradient(circle, var(--orb-2) 0%, rgba(255, 255, 255, 0) 72%);
+}
+
+.liquid-orb-3 {
+  top: 35%;
+  right: 18%;
+  width: 42vw;
+  height: 42vw;
+  background: radial-gradient(circle, var(--orb-3) 0%, rgba(255, 255, 255, 0) 70%);
+}
+
+.liquid-orb-4 {
+  bottom: 20%;
+  left: 5%;
+  width: 38vw;
+  height: 38vw;
+  background: radial-gradient(circle, var(--orb-4) 0%, rgba(255, 255, 255, 0) 70%);
+}
+
+/* Keyframes for organic liquid mesh motion */
+@keyframes floatOrb1 {
+  0% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(6vw, 8vh) scale(1.1); }
+  66% { transform: translate(-4vw, 12vh) scale(0.95); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+@keyframes floatOrb2 {
+  0% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-8vw, -6vh) scale(1.08); }
+  66% { transform: translate(5vw, -10vh) scale(0.92); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+@keyframes floatOrb3 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-10vw, 6vh) scale(1.15); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+@keyframes floatOrb4 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(8vw, -8vh) scale(1.12); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+body.mesh-animated .liquid-orb-1 {
+  animation: floatOrb1 20s ease-in-out infinite alternate;
+}
+
+body.mesh-animated .liquid-orb-2 {
+  animation: floatOrb2 24s ease-in-out infinite alternate;
+}
+
+body.mesh-animated .liquid-orb-3 {
+  animation: floatOrb3 18s ease-in-out infinite alternate;
+}
+
+body.mesh-animated .liquid-orb-4 {
+  animation: floatOrb4 22s ease-in-out infinite alternate;
+}
+
+/* AUTHENTIC LIQUID GLASS PANELS & CARDS */
+.glass-panel, .sidebar-card, .mini-cal-card, .schedule-column, .auth-form-card {
+  background: var(--glass-bg) !important;
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)) !important;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: 
+    var(--glass-shadow),
+    inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 1px 0 rgba(15, 23, 42, 0.03) !important;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Liquid Sheen reflection line */
+.glass-panel::before, .sidebar-card::before, .mini-cal-card::before, .schedule-column::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.95), transparent);
+  pointer-events: none;
+}
+
+.glass-panel-elevated, .task-modal-dialog, .terms-dialog, .personalization-modal-dialog {
+  background: var(--glass-elevated-bg) !important;
+  backdrop-filter: blur(calc(var(--glass-blur) + 6px)) saturate(calc(var(--glass-saturate) + 20%)) !important;
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 6px)) saturate(calc(var(--glass-saturate) + 20%)) !important;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: 
+    0 24px 60px -12px rgba(0, 82, 255, 0.16),
+    0 4px 16px 0 rgba(15, 23, 42, 0.06),
+    inset 0 1.5px 2.5px 0 rgba(255, 255, 255, 1) !important;
+}
+
+.task-item-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 255, 255, 0.78) 100%) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 
+    0 4px 16px -2px rgba(15, 23, 42, 0.06), 
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.95) !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.task-item-card:hover {
+  transform: translateY(-3px) scale(1.01) !important;
+  border-color: rgba(0, 82, 255, 0.4) !important;
+  box-shadow: 
+    0 16px 32px -6px rgba(0, 82, 255, 0.16), 
+    inset 0 1.5px 2px 0 rgba(255, 255, 255, 1) !important;
+}
+
+/* Glass Inputs */
+.glass-input {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(203, 213, 225, 0.8);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-input:focus {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(0, 82, 255, 0.16);
+  outline: none;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(203, 213, 225, 0.8);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.9);
+}

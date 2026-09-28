@@ -1,0 +1,81 @@
+.hourly-calendar-wrapper {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 12px 36px -8px rgba(15, 23, 42, 0.07);
+  border-radius: 1.25rem;
+  overflow: hidden;
+}
+
+.hourly-grid-header {
+  display: grid;
+  grid-template-columns: 60px repeat(7, 1fr);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  background: rgba(255, 255, 255, 0.6);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.hourly-grid-body {
+  display: grid;
+  grid-template-columns: 60px repeat(7, 1fr);
+  position: relative;
+  min-height: 800px;
+}
+
+.hourly-time-col {
+  border-right: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.hourly-time-slot {
+  height: 54px;
+  border-bottom: 1px dashed rgba(226, 232, 240, 0.7);
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  color: #64748B;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 4px;
+}
+
+.hourly-day-col {
+  position: relative;
+  border-right: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+.hourly-day-slot {
+  height: 54px;
+  border-bottom: 1px solid rgba(241, 245, 249, 0.8);
+}
+
+.calendar-event-block {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  border-radius: 0.6rem;
+  background: linear-gradient(135deg, rgba(0, 82, 255, 0.88) 0%, rgba(59, 130, 246, 0.82) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: #FFFFFF;
+  padding: 0.4rem 0.6rem;
+  box-shadow: 0 4px 14px 0 rgba(0, 82, 255, 0.25);
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.calendar-event-block:hover {
+  transform: translateY(-1px) scale(1.01);
+  box-shadow: 0 8px 20px 0 rgba(0, 82, 255, 0.35);
+  border-color: rgba(255, 255, 255, 0.8);
+}
+
+.calendar-event-block.completed {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.85) 0%, rgba(5, 150, 105, 0.8) 100%);
+  box-shadow: 0 4px 12px 0 rgba(16, 185, 129, 0.2);
+}

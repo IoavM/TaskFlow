@@ -1,0 +1,12 @@
+{
+  "title": "Términos y Condiciones",
+  "subtitle": "Por favor revisa y acepta los términos para activar tu cuenta de TaskFlow",
+  "acceptButton": "Aceptar y Continuar",
+  "cancelButton": "Volver",
+  "terms": [
+    "Privacidad de datos: Tus tareas y notas son privadas y están vinculadas exclusivamente a tu cuenta.",
+    "Seguridad: Las contraseñas están cifradas con algoritmos de alta seguridad (bcrypt) y no son legibles por terceros.",
+    "Uso responsable de IA: La planificación automática con Groq se procesa de forma segura a través de nuestro servidor sin exponer tus credenciales.",
+    "Disponibilidad: TaskFlow te permite organizar tus horarios, editar días individuales y marcar metas completadas en cualquier momento."
+  ]
+}

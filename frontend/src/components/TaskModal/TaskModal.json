@@ -1,0 +1,11 @@
+{
+  "title": "Crear / Editar Tarea",
+  "subtitle": "Estructura tu meta y programa los bloques de trabajo",
+  "aiPromptPlaceholder": "Ej: Tengo una entrega de proyecto el jueves y voy a trabajar de lunes a miércoles de 2 a 4 pm...",
+  "daysOfWeek": ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
+  "recurrenceOptions": [
+    { "value": "diaria", "label": "Diaria" },
+    { "value": "semanal", "label": "Semanal" },
+    { "value": "mensual", "label": "Mensual" }
+  ]
+}

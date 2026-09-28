@@ -1,0 +1,38 @@
+.spotify-liquid-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.88) 0%, rgba(240, 253, 244, 0.6) 100%);
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 1rem;
+  padding: 1rem;
+  box-shadow: 
+    0 12px 32px -8px rgba(29, 185, 84, 0.12),
+    0 2px 8px -2px rgba(15, 23, 42, 0.05),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.95);
+  transition: all 0.3s ease;
+}
+
+.spotify-liquid-card:hover {
+  box-shadow: 
+    0 16px 36px -6px rgba(29, 185, 84, 0.18),
+    0 4px 12px -2px rgba(15, 23, 42, 0.06),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 1);
+}
+
+.animate-spin-slow {
+  animation: spin 8s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spotify-embed-container {
+  position: relative;
+  transition: max-height 0.3s ease-in-out;
+}

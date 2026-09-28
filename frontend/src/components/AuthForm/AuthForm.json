@@ -1,0 +1,56 @@
+{
+  "login": {
+    "title": "Iniciar Sesión",
+    "subtitle": "Organiza tu tiempo con claridad y precisión",
+    "submitButton": "Iniciar Sesión",
+    "switchPrompt": "¿No tienes una cuenta?",
+    "switchLink": "Crear cuenta",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "fields": [
+      {
+        "id": "email",
+        "label": "Correo Electrónico",
+        "type": "email",
+        "placeholder": "ejemplo@taskflow.com",
+        "required": true
+      },
+      {
+        "id": "password",
+        "label": "Contraseña",
+        "type": "password",
+        "placeholder": "••••••••",
+        "required": true
+      }
+    ]
+  },
+  "register": {
+    "title": "Crear Cuenta",
+    "subtitle": "Empieza a gestionar tus tareas inteligentemente",
+    "submitButton": "Crear Cuenta",
+    "switchPrompt": "¿Ya tienes una cuenta?",
+    "switchLink": "Iniciar sesión",
+    "fields": [
+      {
+        "id": "email",
+        "label": "Correo Electrónico",
+        "type": "email",
+        "placeholder": "ejemplo@taskflow.com",
+        "required": true
+      },
+      {
+        "id": "phone",
+        "label": "Teléfono",
+        "type": "tel",
+        "placeholder": "+57 300 123 4567",
+        "required": false
+      },
+      {
+        "id": "password",
+        "label": "Contraseña",
+        "type": "password",
+        "placeholder": "Mínimo 6 caracteres",
+        "required": true
+      }
+    ]
+  }
+}
