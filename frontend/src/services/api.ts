@@ -1,6 +1,7 @@
 import { AuthResponse, Task, TaskCreateInput, AIParsedPlan, User } from '../types';
 
-const BASE_URL = '/api/v1';
+const RAW_API_HOST = import.meta.env.VITE_API_URL ? String(import.meta.env.VITE_API_URL).trim() : '';
+const BASE_URL = RAW_API_HOST ? `${RAW_API_HOST.replace(/\/$/, '')}/api/v1` : '/api/v1';
 
 function getAuthHeader(): HeadersInit {
   const token = localStorage.getItem('taskflow_token');
