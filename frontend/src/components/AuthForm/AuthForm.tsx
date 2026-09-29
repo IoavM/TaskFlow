@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import authConfig from './AuthForm.json';
+import { useToast } from '../../context/ToastContext';
 import './AuthForm.css';
 
 interface AuthFormProps {
@@ -15,6 +16,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   onSubmit,
 }) => {
   const config = authConfig[mode];
+  const { toast } = useToast();
   const [formData, setFormData] = useState<Record<string, string>>({
     email: '',
     phone: '',
@@ -106,7 +108,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           <div className="flex justify-end pt-1">
             <button
               type="button"
-              onClick={() => alert('Para restablecer tu contraseña, contacta al soporte de TaskFlow o regístrate nuevamente.')}
+              onClick={() => toast.info('Para restablecer tu contraseña, contacta al soporte de TaskFlow o regístrate con un nuevo correo.', 'Restablecer contraseña')}
               className="text-xs text-[#0052FF] font-medium hover:underline hover:opacity-90"
             >
               {(config as any).forgotPassword}

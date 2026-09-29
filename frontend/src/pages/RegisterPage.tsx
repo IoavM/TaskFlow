@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AuthForm } from '../components/AuthForm/AuthForm';
 import { TermsModal } from '../components/TermsModal/TermsModal';
+import { useToast } from '../context/ToastContext';
 import { api } from '../services/api';
 
 interface RegisterPageProps {
@@ -12,6 +13,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
   onRegisterSuccess,
   onNavigateLogin,
 }) => {
+  const { toast } = useToast();
   const [showTerms, setShowTerms] = useState(false);
   const [pendingData, setPendingData] = useState<Record<string, string> | null>(null);
   const [loading, setLoading] = useState(false);
@@ -24,6 +26,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
   const handleConfirmRegister = async () => {
     if (!pendingData) return;
     try {
+      setLoading(true);
       await api.register(
         pendingData.email,
         pendingData.phone || '',
@@ -33,8 +36,8 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
       );
       setShowTerms(false);
       onRegisterSuccess();
-    } catch (err) {
-      alert((err as any).message || 'Error al crear la cuenta');
+    } catch (err: any) {
+      toast.error(err.message || 'Error al crear la cuenta');
     } finally {
       setLoading(false);
     }

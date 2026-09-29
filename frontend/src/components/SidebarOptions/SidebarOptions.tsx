@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, Send, Loader2 } from 'lucide-react';
 import { SpotifyPlayer } from '../SpotifyPlayer/SpotifyPlayer';
+import { useToast } from '../../context/ToastContext';
 import sidebarConfig from './SidebarOptions.json';
 import './SidebarOptions.css';
 
@@ -13,6 +14,7 @@ export const SidebarOptions: React.FC<SidebarOptionsProps> = ({
   onDirectAICreate,
   onOpenManualModal,
 }) => {
+  const { toast } = useToast();
   const [promptText, setPromptText] = useState('');
   const [loadingAI, setLoadingAI] = useState(false);
 
@@ -24,7 +26,7 @@ export const SidebarOptions: React.FC<SidebarOptionsProps> = ({
       await onDirectAICreate(promptText);
       setPromptText('');
     } catch (err: any) {
-      alert(err.message || 'Error al crear la tarea con Groq.');
+      toast.error(err.message || 'Error al crear la tarea con Groq.');
     } finally {
       setLoadingAI(false);
     }

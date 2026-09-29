@@ -1,5 +1,17 @@
 import { AuthResponse, Task, TaskCreateInput, AIParsedPlan, User } from '../types';
 
+export class ApiError extends Error {
+  status: number;
+  data: any;
+
+  constructor(message: string, status: number = 500, data?: any) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.data = data;
+  }
+}
+
 const getBaseUrl = (): string => {
   const envUrl = import.meta.env.VITE_API_URL;
   if (envUrl && String(envUrl).trim() !== '') {
@@ -13,40 +25,117 @@ const getBaseUrl = (): string => {
 
 const BASE_URL = getBaseUrl();
 
-function getAuthHeader(): HeadersInit {
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const url = `${BASE_URL}${endpoint}`;
+  const headers = new Headers(options.headers || {});
+
   const token = localStorage.getItem('taskflow_token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  if (options.body && typeof options.body === 'string' && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(url, { ...options, headers });
+  } catch (err: any) {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      throw new ApiError('No tienes conexión a internet. Por favor verifica tu red.', 0);
+    }
+    throw new ApiError(
+      'No se pudo conectar con el servidor de TaskFlow. Verifica tu conexión o intenta más tarde.',
+      0
+    );
+  }
+
+  if (!res.ok) {
+    let errorDetail = '';
+    let errorData: any = null;
+
+    try {
+      errorData = await res.json();
+      if (typeof errorData?.detail === 'string') {
+        errorDetail = errorData.detail;
+      } else if (Array.isArray(errorData?.detail)) {
+        errorDetail = errorData.detail.map((e: any) => e.msg || JSON.stringify(e)).join(', ');
+      } else if (errorData?.message) {
+        errorDetail = errorData.message;
+      }
+    } catch {
+      // Non-JSON response body
+    }
+
+    if (res.status === 401) {
+      localStorage.removeItem('taskflow_token');
+      localStorage.removeItem('taskflow_user');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('taskflow:session_expired'));
+      }
+      throw new ApiError(
+        errorDetail || 'Tu sesión ha expirado o no estás autorizado. Por favor inicia sesión nuevamente.',
+        401,
+        errorData
+      );
+    }
+
+    if (res.status === 403) {
+      throw new ApiError(errorDetail || 'No tienes permisos para realizar esta acción.', 403, errorData);
+    }
+
+    if (res.status === 404) {
+      throw new ApiError(errorDetail || 'El recurso solicitado no fue encontrado.', 404, errorData);
+    }
+
+    if (res.status === 409) {
+      throw new ApiError(errorDetail || 'Ya existe un registro con esos datos.', 409, errorData);
+    }
+
+    if (res.status === 422) {
+      throw new ApiError(errorDetail || 'Los datos enviados no tienen un formato válido.', 422, errorData);
+    }
+
+    if (res.status >= 500) {
+      throw new ApiError(
+        errorDetail || 'Error en el servidor. Por favor intenta de nuevo en unos momentos.',
+        res.status,
+        errorData
+      );
+    }
+
+    throw new ApiError(errorDetail || `Error en la solicitud (${res.status})`, res.status, errorData);
+  }
+
+  if (res.status === 204) {
+    return {} as T;
+  }
+
+  try {
+    return await res.json();
+  } catch {
+    return {} as T;
+  }
 }
 
 export const api = {
   // Authentication
   async register(email: string, phone: string, password: string, first_name?: string, last_name?: string): Promise<AuthResponse> {
-    const res = await fetch(`${BASE_URL}/auth/register`, {
+    const data = await request<AuthResponse>('/auth/register', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, phone, password, first_name, last_name }),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Error en el registro' }));
-      throw new Error(err.detail || 'Error en el registro');
-    }
-    const data: AuthResponse = await res.json();
     localStorage.setItem('taskflow_token', data.access_token);
     localStorage.setItem('taskflow_user', JSON.stringify(data.user));
     return data;
   },
 
   async login(email: string, password: string): Promise<AuthResponse> {
-    const res = await fetch(`${BASE_URL}/auth/login`, {
+    const data = await request<AuthResponse>('/auth/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Correo o contraseña incorrectos' }));
-      throw new Error(err.detail || 'Correo o contraseña incorrectos');
-    }
-    const data: AuthResponse = await res.json();
     localStorage.setItem('taskflow_token', data.access_token);
     localStorage.setItem('taskflow_user', JSON.stringify(data.user));
     return data;
@@ -64,104 +153,55 @@ export const api = {
 
   // Tasks
   async getTasks(): Promise<Task[]> {
-    const res = await fetch(`${BASE_URL}/tasks`, {
-      headers: { ...getAuthHeader() },
-    });
-    if (!res.ok) throw new Error('Error al cargar las tareas');
-    return res.json();
+    return request<Task[]>('/tasks');
   },
 
   async createTask(task: TaskCreateInput): Promise<Task> {
-    const res = await fetch(`${BASE_URL}/tasks`, {
+    return request<Task>('/tasks', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeader(),
-      },
       body: JSON.stringify(task),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Error al crear la tarea' }));
-      throw new Error(err.detail || 'Error al crear la tarea');
-    }
-    return res.json();
   },
 
   async updateTask(taskId: number, task: Partial<TaskCreateInput>): Promise<Task> {
-    const res = await fetch(`${BASE_URL}/tasks/${taskId}`, {
+    return request<Task>(`/tasks/${taskId}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeader(),
-      },
       body: JSON.stringify(task),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Error al actualizar la tarea' }));
-      throw new Error(err.detail || 'Error al actualizar la tarea');
-    }
-    return res.json();
   },
 
   async toggleBlockStatus(blockId: number, completed: boolean, color?: string): Promise<void> {
-    const res = await fetch(`${BASE_URL}/tasks/blocks/${blockId}`, {
+    return request<void>(`/tasks/blocks/${blockId}`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeader(),
-      },
       body: JSON.stringify({ completed, ...(color ? { color } : {}) }),
     });
-    if (!res.ok) throw new Error('Error al actualizar el bloque de trabajo');
   },
 
   async updateWorkBlockColor(blockId: number, color: string): Promise<void> {
-    const res = await fetch(`${BASE_URL}/tasks/blocks/${blockId}`, {
+    return request<void>(`/tasks/blocks/${blockId}`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeader(),
-      },
       body: JSON.stringify({ color }),
     });
-    if (!res.ok) throw new Error('Error al actualizar el color del bloque');
   },
 
   async deleteTask(taskId: number): Promise<void> {
-    const res = await fetch(`${BASE_URL}/tasks/${taskId}`, {
+    return request<void>(`/tasks/${taskId}`, {
       method: 'DELETE',
-      headers: { ...getAuthHeader() },
     });
-    if (!res.ok) throw new Error('Error al eliminar la tarea');
   },
 
-  // Groq AI Assistant
+  // AI Assistant
   async parseTaskWithAI(prompt: string): Promise<AIParsedPlan> {
-    const res = await fetch(`${BASE_URL}/ai/parse-task`, {
+    return request<AIParsedPlan>('/ai/parse-task', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeader(),
-      },
       body: JSON.stringify({ prompt }),
     });
-    if (!res.ok) throw new Error('Error al procesar la sugerencia con Groq IA');
-    return res.json();
   },
 
   async createTaskDirectlyWithAI(prompt: string): Promise<Task> {
-    const res = await fetch(`${BASE_URL}/tasks/ai-create`, {
+    return request<Task>('/tasks/ai-create', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeader(),
-      },
       body: JSON.stringify({ prompt }),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Error al crear la tarea con IA' }));
-      throw new Error(err.detail || 'Error al crear la tarea con IA');
-    }
-    return res.json();
   },
 };

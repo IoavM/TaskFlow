@@ -3,25 +3,41 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { SchedulePage } from './pages/SchedulePage';
 import { CustomizationProvider } from './context/CustomizationContext';
+import { ToastProvider, useToast } from './context/ToastContext';
+import { ToastContainer } from './components/Toast/ToastContainer';
+import { ErrorBoundary } from './components/ErrorBoundary/ErrorBoundary';
 import { api } from './services/api';
 
-export function App() {
+function AppContent() {
   const [currentView, setCurrentView] = useState<'login' | 'register' | 'schedule'>('login');
+  const { toast } = useToast();
 
   useEffect(() => {
     const token = localStorage.getItem('taskflow_token');
     if (token) {
       setCurrentView('schedule');
     }
-  }, []);
+
+    const handleSessionExpired = () => {
+      setCurrentView('login');
+      toast.warning('Tu sesión ha expirado. Por favor inicia sesión de nuevo.', 'Sesión vencida');
+    };
+
+    window.addEventListener('taskflow:session_expired', handleSessionExpired);
+    return () => {
+      window.removeEventListener('taskflow:session_expired', handleSessionExpired);
+    };
+  }, [toast]);
 
   const handleAuthSuccess = () => {
     setCurrentView('schedule');
+    toast.success('¡Bienvenido a TaskFlow!');
   };
 
   const handleLogout = () => {
     api.logout();
     setCurrentView('login');
+    toast.info('Has cerrado sesión correctamente.');
   };
 
   const renderContent = () => {
@@ -47,9 +63,22 @@ export function App() {
   };
 
   return (
-    <CustomizationProvider>
+    <>
       {renderContent()}
-    </CustomizationProvider>
+      <ToastContainer />
+    </>
+  );
+}
+
+export function App() {
+  return (
+    <ErrorBoundary>
+      <CustomizationProvider>
+        <ToastProvider>
+          <AppContent />
+        </ToastProvider>
+      </CustomizationProvider>
+    </ErrorBoundary>
   );
 }
 

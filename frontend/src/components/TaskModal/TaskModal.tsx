@@ -15,6 +15,7 @@ import { api } from '../../services/api';
 import config from './TaskModal.json';
 import { TimePicker } from '../TimePicker/TimePicker';
 import { TASK_COLORS } from '../../utils/taskColors';
+import { useToast } from '../../context/ToastContext';
 import './TaskModal.css';
 
 interface TaskModalProps {
@@ -34,6 +35,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   onTaskCreated,
   taskToEdit,
 }) => {
+  const { toast } = useToast();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [taskType, setTaskType] = useState<'single' | 'recurring'>('single');
@@ -184,8 +186,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           setDailyEndTime(plan.work_blocks[0].end_time);
         }
       }
+      toast.info('Sugerencia de IA aplicada al formulario.');
     } catch (err: any) {
-      setError('No se pudo procesar con el asistente IA. Rellena los datos manualmente.');
+      const msg = err.message || 'No se pudo procesar con el asistente IA. Rellena los datos manualmente.';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoadingAI(false);
     }
@@ -253,13 +258,17 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
       if (taskToEdit) {
         await api.updateTask(taskToEdit.id, payload);
+        toast.success('Tarea actualizada exitosamente.');
       } else {
         await api.createTask(payload);
+        toast.success('Tarea creada exitosamente.');
       }
       onTaskCreated();
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Error al guardar la tarea.');
+      const msg = err.message || 'Error al guardar la tarea.';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }

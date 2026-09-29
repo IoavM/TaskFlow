@@ -6,7 +6,9 @@ import { MiniCalendar } from '../components/MiniCalendar/MiniCalendar';
 import { SidebarOptions } from '../components/SidebarOptions/SidebarOptions';
 import { TaskModal } from '../components/TaskModal/TaskModal';
 import { PersonalizationModal } from '../components/PersonalizationModal/PersonalizationModal';
+import { ConfirmModal } from '../components/ConfirmModal/ConfirmModal';
 import { LiquidPill } from '../components/LiquidGlass/LiquidPill';
+import { useToast } from '../context/ToastContext';
 import { api } from '../services/api';
 import type { Task } from '../types';
 
@@ -15,6 +17,7 @@ interface SchedulePageProps {
 }
 
 export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
+  const { toast } = useToast();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
@@ -23,6 +26,8 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'columns' | 'calendar'>('columns');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [taskToDelete, setTaskToDelete] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const currentUser = api.getCurrentStoredUser();
 
@@ -31,8 +36,9 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
       setLoading(true);
       const data = await api.getTasks();
       setTasks(data);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      toast.error(err.message || 'Error al cargar las tareas.');
     } finally {
       setLoading(false);
     }
@@ -46,18 +52,28 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
     try {
       await api.toggleBlockStatus(blockId, !currentCompleted);
       await loadTasks();
-    } catch (err) {
-      alert('Error al actualizar el estado del bloque.');
+      toast.success(currentCompleted ? 'Bloque marcado como pendiente' : '¡Bloque completado!');
+    } catch (err: any) {
+      toast.error(err.message || 'Error al actualizar el estado del bloque.');
     }
   };
 
   const handleDeleteTask = async (taskId: number) => {
-    if (!window.confirm('¿Seguro que deseas eliminar esta tarea?')) return;
+    setTaskToDelete(taskId);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!taskToDelete) return;
     try {
-      await api.deleteTask(taskId);
+      setIsDeleting(true);
+      await api.deleteTask(taskToDelete);
+      toast.success('Tarea eliminada exitosamente.');
+      setTaskToDelete(null);
       await loadTasks();
-    } catch (err) {
-      alert('Error al eliminar la tarea.');
+    } catch (err: any) {
+      toast.error(err.message || 'Error al eliminar la tarea.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -72,16 +88,24 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
   };
 
   const handleDirectAICreate = async (prompt: string) => {
-    await api.createTaskDirectlyWithAI(prompt);
-    await loadTasks();
+    try {
+      await api.createTaskDirectlyWithAI(prompt);
+      toast.success('¡Tarea creada exitosamente con IA!');
+      await loadTasks();
+    } catch (err: any) {
+      toast.error(err.message || 'Error al generar la tarea con IA');
+      throw err;
+    }
   };
 
   const handleUpdateTaskColor = async (taskId: number, newColor: string) => {
     try {
       await api.updateTask(taskId, { color: newColor });
       await loadTasks();
-    } catch (err) {
+      toast.success('Color actualizado correctamente.');
+    } catch (err: any) {
       console.error('Error al actualizar color de tarea:', err);
+      toast.error(err.message || 'Error al actualizar color de la tarea.');
     }
   };
 
@@ -285,6 +309,19 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
       <PersonalizationModal
         isOpen={isPersonalizationOpen}
         onClose={() => setIsPersonalizationOpen(false)}
+      />
+
+      {/* Confirmation Modal for Task Deletion */}
+      <ConfirmModal
+        isOpen={taskToDelete !== null}
+        title="¿Eliminar tarea?"
+        message="¿Estás seguro de que deseas eliminar esta tarea y todos sus bloques de trabajo? Esta acción no se puede deshacer."
+        confirmText="Eliminar Tarea"
+        cancelText="Cancelar"
+        danger
+        loading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setTaskToDelete(null)}
       />
     </div>
   );
