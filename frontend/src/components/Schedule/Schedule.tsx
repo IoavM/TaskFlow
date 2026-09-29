@@ -155,9 +155,7 @@ export const Schedule: React.FC<ScheduleProps> = ({
             const pad = (n: number) => n.toString().padStart(2, '0');
             const h = pad(dl.getHours());
             const m = pad(dl.getMinutes());
-            if (h !== '00' || m !== '00') {
-              deliveryTimeLabel = `Entrega (${h}:${m})`;
-            }
+            deliveryTimeLabel = `Entrega (${h}:${m})`;
           }
         }
 
@@ -200,12 +198,12 @@ export const Schedule: React.FC<ScheduleProps> = ({
           const pad = (n: number) => n.toString().padStart(2, '0');
           const h = pad(d.getHours());
           const m = pad(d.getMinutes());
-          const timeLabel = (h !== '00' || m !== '00') ? `Entrega (${h}:${m})` : 'Entrega final';
+          const timeLabel = `Entrega (${h}:${m})`;
 
           items.push({
             task,
             block: blk,
-            isDelivery: !blk,
+            isDelivery: true,
             displayTitle: task.title,
             timeLabel,
             isCompleted: blk ? blk.completed : task.status === 'completed',
@@ -398,17 +396,17 @@ export const Schedule: React.FC<ScheduleProps> = ({
 
                           {/* Card Footer: Time on Left, Quick Complete Checkbox on Right */}
                           <div className="pt-2.5 border-t border-slate-200/60 flex items-center justify-between gap-2 mt-auto">
-                            {block ? (
+                            {isDelivery || !block ? (
+                              <div className="flex items-center gap-1.5 text-blue-700 font-medium text-xs whitespace-nowrap">
+                                <CalIcon className="w-3.5 h-3.5 shrink-0 text-[#0052FF]" />
+                                <span className="font-semibold">{timeLabel || 'Entrega final'}</span>
+                              </div>
+                            ) : (
                               <div className="flex items-center gap-1.5 text-slate-700 font-mono text-xs whitespace-nowrap">
                                 <Clock className="w-3.5 h-3.5 shrink-0" style={{ color: colorTheme.accent }} />
                                 <span className="font-semibold tabular-nums">
                                   {block.start_time || '14:00'} - {block.end_time || '16:00'}
                                 </span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1.5 text-blue-700 font-medium text-xs whitespace-nowrap">
-                                <CalIcon className="w-3.5 h-3.5 shrink-0 text-[#0052FF]" />
-                                <span className="font-semibold">{timeLabel || 'Entrega final'}</span>
                               </div>
                             )}
 

@@ -128,8 +128,9 @@ export const HourlyCalendar: React.FC<HourlyCalendarProps> = ({
 
       if (hasWorkBlocksWithWorkPrefix) {
         let deadlineEnd: Date | null = null;
+        let dl: Date | null = null;
         if (t.deadline) {
-          const dl = parseDateLocal(t.deadline);
+          dl = parseDateLocal(t.deadline);
           if (!isNaN(dl.getTime())) {
             deadlineEnd = new Date(dl);
             deadlineEnd.setHours(23, 59, 59, 999);
@@ -143,6 +144,26 @@ export const HourlyCalendar: React.FC<HourlyCalendarProps> = ({
             if (bNorm === dayNameNorm) {
               list.push({ task: t, block: b });
             }
+          });
+        }
+
+        // Display delivery block on deadline day
+        if (dl && isSameDay(columnDate, dl)) {
+          const pad = (n: number) => n.toString().padStart(2, '0');
+          const startH = dl.getHours();
+          const startM = dl.getMinutes();
+          const endH = (startH + 1) % 24;
+          list.push({
+            task: t,
+            block: {
+              id: t.id * 1000 + 99,
+              task_id: t.id,
+              day_name: dayKey,
+              start_time: `${pad(startH)}:${pad(startM)}`,
+              end_time: `${pad(endH)}:${pad(startM)}`,
+              notes: `Entrega: ${t.title}`,
+              completed: t.status === 'completed',
+            },
           });
         }
         return;
@@ -247,8 +268,11 @@ export const HourlyCalendar: React.FC<HourlyCalendarProps> = ({
                 {/* Event blocks placed by hour */}
                 {dayEvents.map(({ task, block }) => {
                   const startDec = parseTimeToDecimal(block.start_time, 14);
-                  const endDec = parseTimeToDecimal(block.end_time, 16);
-                  const duration = Math.max(endDec - startDec, 0.75); // minimum 45 mins height
+                  let endDec = parseTimeToDecimal(block.end_time, 16);
+                  if (endDec <= startDec) {
+                    endDec += 24;
+                  }
+                  const duration = Math.min(Math.max(endDec - startDec, 0.75), 4);
 
                   const topOffset = Math.max((startDec - startHour) * slotHeight, 0);
                   const heightPx = duration * slotHeight;

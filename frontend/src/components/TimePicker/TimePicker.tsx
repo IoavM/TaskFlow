@@ -9,8 +9,16 @@ interface TimePickerProps {
 
 export const TimePicker: React.FC<TimePickerProps> = ({ value, onChange }) => {
   const parts = value ? value.split(':') : ['14', '00'];
-  const currentHour = parts[0] || '14';
-  const currentMinute = parts[1] || '00';
+  const currentHour = parts[0] ? parts[0].padStart(2, '0') : '14';
+  const currentMinute = parts[1] ? parts[1].padStart(2, '0') : '00';
+
+  const hoursList = timeConfig.hours.includes(currentHour)
+    ? timeConfig.hours
+    : [...timeConfig.hours, currentHour].sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+
+  const minutesList = timeConfig.minutes.includes(currentMinute)
+    ? timeConfig.minutes
+    : [...timeConfig.minutes, currentMinute].sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
 
   const handleHourChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     onChange(`${e.target.value}:${currentMinute}`);
@@ -28,7 +36,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({ value, onChange }) => {
         className="apple-time-select"
         aria-label="Hora"
       >
-        {timeConfig.hours.map((h) => (
+        {hoursList.map((h) => (
           <option key={h} value={h}>
             {h}
           </option>
@@ -41,7 +49,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({ value, onChange }) => {
         className="apple-time-select"
         aria-label="Minutos"
       >
-        {timeConfig.minutes.map((m) => (
+        {minutesList.map((m) => (
           <option key={m} value={m}>
             {m}
           </option>

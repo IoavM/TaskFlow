@@ -44,7 +44,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
   // Single Task State (Delivery Date & Unified Time Range)
   const [singleDate, setSingleDate] = useState('');
-  const [deliveryTime, setDeliveryTime] = useState('23:59');
+  const [deliveryTime, setDeliveryTime] = useState('23:00');
   const [singleStartTime, setSingleStartTime] = useState('14:00');
   const [singleEndTime, setSingleEndTime] = useState('16:00');
 
@@ -177,7 +177,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         tomorrow.setDate(tomorrow.getDate() + 1);
         const pad = (n: number) => n.toString().padStart(2, '0');
         setSingleDate(`${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`);
-        setDeliveryTime('23:59');
+        setDeliveryTime('23:00');
         setSingleStartTime('14:00');
         setSingleEndTime('16:00');
         setDailyStartTime('14:00');
@@ -224,7 +224,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
       if (plan.deadline) {
         setSingleDate(extractDateOnly(plan.deadline));
-        setDeliveryTime(extractTimeOnly(plan.deadline, '23:59'));
+        setDeliveryTime(extractTimeOnly(plan.deadline, '23:00'));
       }
 
       if (plan.is_recurring !== undefined) {
@@ -280,8 +280,9 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       let formattedDeadline: string | undefined = undefined;
 
       if (!isRecurring) {
-        // Tarea Única
-        formattedDeadline = `${singleDate}T${deliveryTime || '23:59'}:00`;
+        // Tarea Única: hora exacta de entrega
+        const cleanDeliveryTime = deliveryTime || '23:00';
+        formattedDeadline = `${singleDate}T${cleanDeliveryTime}:00`;
 
         if (wantWorkDays && workDays.length > 0) {
           // Genera bloques de trabajo como extensiones de la tarea principal
@@ -293,18 +294,25 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             color: color,
           }));
         } else {
-          // Bloque estándar en el día de la entrega
+          // Bloque estándar en el día de la entrega sincronizado con la hora y minuto de entrega
           const [y, m, d] = singleDate.split('-').map(Number);
           const dateObj = new Date(y, m - 1, d);
           const daysMap = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
           const dayName = !isNaN(dateObj.getTime()) ? daysMap[dateObj.getDay()] : 'Lunes';
 
+          const [dH = '23', dM = '00'] = cleanDeliveryTime.split(':');
+          const dHNum = parseInt(dH, 10);
+          const pad = (n: number) => n.toString().padStart(2, '0');
+          const startT = `${pad(dHNum)}:${dM}`;
+          const endHNum = (dHNum + 1) % 24;
+          const endT = `${pad(endHNum)}:${dM}`;
+
           finalBlocks = [
             {
               day_name: dayName,
-              start_time: singleStartTime,
-              end_time: singleEndTime,
-              block_date: `${singleDate}T${singleStartTime}:00`,
+              start_time: startT,
+              end_time: endT,
+              block_date: `${singleDate}T${startT}:00`,
               notes: title,
               color: color,
             },
