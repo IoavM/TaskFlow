@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, LogOut, CheckCircle2, ListTodo, Sparkles, LayoutGrid, Calendar, Palette, PanelLeft, PanelLeftClose } from 'lucide-react';
+import { Plus, LogOut, CheckCircle2, ListTodo, Sparkles, LayoutGrid, Calendar, Palette, PanelLeft, PanelLeftClose, X } from 'lucide-react';
 import { Schedule } from '../components/Schedule/Schedule';
 import { HourlyCalendar } from '../components/HourlyCalendar/HourlyCalendar';
 import { MiniCalendar } from '../components/MiniCalendar/MiniCalendar';
@@ -26,6 +26,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'columns' | 'calendar'>('columns');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -151,6 +152,17 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Mobile Sidebar & Music Trigger */}
+          <button
+            type="button"
+            onClick={() => setIsMobileDrawerOpen(true)}
+            className="lg:hidden p-2 rounded-xl bg-white/85 hover:bg-white text-slate-700 border border-slate-200/80 shadow-2xs flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
+            title="Abrir panel lateral y música"
+          >
+            <PanelLeft className="w-4 h-4 text-[#0052FF]" />
+            <span className="hidden xs:inline">Panel</span>
+          </button>
+
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/85 border border-slate-200/70 shadow-2xs text-xs text-slate-700">
             <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-400" />
             <span className="font-semibold text-slate-800 truncate max-w-[110px] sm:max-w-[160px]" title={userDisplayName}>
@@ -186,11 +198,53 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
         </div>
       </header>
 
+      {/* Mobile Drawer Backdrop Overlay (Keeps Spotify active, smooth glassmorphism blur) */}
+      <div
+        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 transition-opacity duration-300 lg:hidden ${
+          isMobileDrawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => setIsMobileDrawerOpen(false)}
+        aria-hidden="true"
+      />
+
       {/* Main Workspace Layout (Fluid width for large monitors, optimized compact width for laptops) */}
       <main className="relative z-10 flex-1 w-full max-w-none px-3 sm:px-6 lg:px-6 xl:px-8 2xl:px-10 py-5 flex flex-col lg:flex-row gap-5 items-start">
-        {/* LEFT COLUMN: MiniCalendar and Sidebar Options (Music + Autonomous Gemini) */}
-        {isSidebarOpen && (
-          <aside className="w-full lg:w-[340px] xl:w-[350px] 2xl:w-[370px] shrink-0 space-y-4">
+        {/* LEFT COLUMN: Persistent MiniCalendar and Sidebar Options (Music + AI) */}
+        {/* KEPT MOUNTED IN DOM AT ALL TIMES SO SPOTIFY NEVER STOPS PLAYING */}
+        <aside
+          className={`
+            fixed inset-y-0 left-0 z-50 w-[88%] max-w-[360px] h-full overflow-y-auto bg-slate-50/95 backdrop-blur-2xl border-r border-slate-200/90 shadow-2xl p-4
+            ${isMobileDrawerOpen ? 'translate-x-0' : '-translate-x-full'}
+            lg:static lg:inset-auto lg:h-auto lg:z-auto lg:p-0 lg:bg-transparent lg:backdrop-blur-none lg:border-r-0 lg:shadow-none lg:translate-x-0
+            ${isSidebarOpen 
+              ? 'lg:w-[340px] xl:w-[350px] 2xl:w-[370px] lg:max-w-none lg:opacity-100 lg:pointer-events-auto lg:overflow-visible' 
+              : 'lg:w-0 lg:max-w-0 lg:opacity-0 lg:pointer-events-none lg:overflow-hidden lg:-mr-5'
+            }
+            transition-all duration-300 ease-in-out shrink-0
+          `}
+        >
+          {/* Header inside mobile drawer */}
+          <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-200/80 lg:hidden">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-[#0052FF] to-[#3B82F6] text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                TF
+              </div>
+              <div>
+                <span className="text-xs font-bold text-slate-800 block">Panel & Spotify</span>
+                <span className="text-[10px] text-slate-500">Música y Productividad</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsMobileDrawerOpen(false)}
+              className="p-1.5 rounded-lg bg-white/80 hover:bg-white text-slate-500 hover:text-slate-800 border border-slate-200/80 shadow-2xs cursor-pointer"
+              title="Cerrar panel lateral"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="w-full lg:w-[340px] xl:w-[350px] 2xl:w-[370px] space-y-4">
             <MiniCalendar
               selectedDate={selectedDate}
               onSelectDate={(date) => setSelectedDate(date)}
@@ -200,19 +254,19 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
               onDirectAICreate={handleDirectAICreate}
               onOpenManualModal={handleOpenCreateModal}
             />
-          </aside>
-        )}
+          </div>
+        </aside>
 
         {/* RIGHT COLUMN: Metrics Banner, View Switchers, and Schedule/Calendar */}
         <div className="flex-1 w-full min-w-0 space-y-4">
           {/* Quick Metrics & View Toggle Banner */}
           <div className="p-3.5 sm:p-4 rounded-2xl glass-panel flex flex-wrap items-center justify-between gap-3 sm:gap-4">
-            <div className="flex items-center gap-4 sm:gap-6">
-              {/* Sidebar Collapse/Expand Toggle (for laptop and desktop space optimization) */}
+            <div className="flex items-center gap-3 sm:gap-6">
+              {/* Desktop Sidebar Collapse/Expand Toggle */}
               <button
                 type="button"
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/85 hover:bg-white text-slate-700 border border-slate-200/80 hover:border-slate-300 text-xs font-semibold transition-all shadow-2xs"
+                className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/85 hover:bg-white text-slate-700 border border-slate-200/80 hover:border-slate-300 text-xs font-semibold transition-all shadow-2xs cursor-pointer"
                 title={isSidebarOpen ? "Ocultar panel lateral para ganar espacio" : "Mostrar panel lateral"}
               >
                 {isSidebarOpen ? (
@@ -226,6 +280,17 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
                     <span>Ver Lateral</span>
                   </>
                 )}
+              </button>
+
+              {/* Mobile Sidebar Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setIsMobileDrawerOpen(true)}
+                className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/85 hover:bg-white text-slate-700 border border-slate-200/80 text-xs font-semibold transition-all shadow-2xs cursor-pointer"
+                title="Abrir panel lateral y música"
+              >
+                <PanelLeft className="w-3.5 h-3.5 text-[#0052FF]" />
+                <span>Panel & Spotify</span>
               </button>
 
               <div className="flex items-center gap-2.5">

@@ -90,7 +90,7 @@ export const SidebarOptions: React.FC<SidebarOptionsProps> = ({
         </form>
       </div>
 
-      {/* Real Spotify Focus Integration */}
+      {/* Spotify Integration */}
       <SpotifyPlayer />
     </div>
   );
