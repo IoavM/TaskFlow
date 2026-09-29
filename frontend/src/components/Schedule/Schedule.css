@@ -14,17 +14,17 @@
 }
 
 .schedule-week-scroll-container::-webkit-scrollbar {
-  height: 10px;
+  height: 8px;
 }
 
 .schedule-week-scroll-container::-webkit-scrollbar-track {
-  background: rgba(226, 232, 240, 0.55);
+  background: rgba(226, 232, 240, 0.45);
   border-radius: 9999px;
   margin: 0 0.5rem;
 }
 
 .schedule-week-scroll-container::-webkit-scrollbar-thumb {
-  background: rgba(0, 82, 255, 0.45);
+  background: rgba(0, 82, 255, 0.35);
   border-radius: 9999px;
   border: 2px solid transparent;
   background-clip: padding-box;
@@ -33,7 +33,7 @@
 }
 
 .schedule-week-scroll-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 82, 255, 0.85);
+  background: rgba(0, 82, 255, 0.75);
 }
 
 .schedule-week-flex {

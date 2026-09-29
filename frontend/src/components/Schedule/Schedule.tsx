@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { CheckCircle2, Circle, Clock, Trash2, Calendar as CalIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, Trash2, Calendar as CalIcon } from 'lucide-react';
 import { Task, WorkBlock } from '../../types';
 import { getTaskColorTheme } from '../../utils/taskColors';
 import { parseDateLocal, isSameDay } from '../../utils/dateUtils';
@@ -36,16 +36,31 @@ export const Schedule: React.FC<ScheduleProps> = ({
   const [mobileActiveDay, setMobileActiveDay] = useState<string>('all');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Desktop Monitor Smooth Navigation: Drag-to-Scroll & Mouse Wheel
+  // Desktop Monitor Smooth Navigation: Drag-to-Scroll & Fluid Mouse Wheel
   const [isDragging, setIsDragging] = useState(false);
   const dragStartX = useRef(0);
   const dragScrollLeft = useRef(0);
   const hasDragged = useRef(false);
 
-  // Wheel listener: Converts vertical mouse wheel to smooth horizontal scroll on monitors
+  // Wheel listener: Converts vertical mouse wheel to ultra-fluid horizontal momentum scroll on monitors
   useEffect(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
+
+    let targetScroll = el.scrollLeft;
+    let animId: number | null = null;
+
+    const smoothScroll = () => {
+      const current = el.scrollLeft;
+      const diff = targetScroll - current;
+      if (Math.abs(diff) > 0.5) {
+        el.scrollLeft = current + diff * 0.16;
+        animId = requestAnimationFrame(smoothScroll);
+      } else {
+        el.scrollLeft = targetScroll;
+        animId = null;
+      }
+    };
 
     const onWheel = (e: WheelEvent) => {
       // If user is using a trackpad with native deltaX horizontal swipe, do not override
@@ -54,19 +69,35 @@ export const Schedule: React.FC<ScheduleProps> = ({
       // If container content fits without horizontal scroll, don't intercept
       if (el.scrollWidth <= el.clientWidth) return;
 
-      if (e.deltaY !== 0) {
-        const atStart = el.scrollLeft <= 0 && e.deltaY < 0;
-        const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 2 && e.deltaY > 0;
+      const maxScroll = el.scrollWidth - el.clientWidth;
+      const atStart = el.scrollLeft <= 0 && e.deltaY < 0;
+      const atEnd = el.scrollLeft >= maxScroll - 1 && e.deltaY > 0;
+      if (atStart || atEnd) return;
 
-        if (!atStart && !atEnd) {
-          e.preventDefault();
-          el.scrollLeft += e.deltaY * 1.15;
-        }
+      e.preventDefault();
+      if (animId === null) {
+        targetScroll = el.scrollLeft;
+      }
+      targetScroll = Math.max(0, Math.min(maxScroll, targetScroll + e.deltaY * 1.25));
+      if (animId === null) {
+        animId = requestAnimationFrame(smoothScroll);
+      }
+    };
+
+    const onScroll = () => {
+      if (animId === null) {
+        targetScroll = el.scrollLeft;
       }
     };
 
     el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
+    el.addEventListener('scroll', onScroll, { passive: true });
+
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+      el.removeEventListener('scroll', onScroll);
+      if (animId !== null) cancelAnimationFrame(animId);
+    };
   }, []);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -86,7 +117,7 @@ export const Schedule: React.FC<ScheduleProps> = ({
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!isDragging || !scrollContainerRef.current) return;
     const x = e.pageX - scrollContainerRef.current.offsetLeft;
-    const walk = (x - dragStartX.current) * 1.35;
+    const walk = (x - dragStartX.current) * 1.2;
     if (Math.abs(walk) > 4) {
       hasDragged.current = true;
     }
@@ -95,18 +126,6 @@ export const Schedule: React.FC<ScheduleProps> = ({
 
   const handleMouseUpOrLeave = () => {
     setIsDragging(false);
-  };
-
-  const handleScrollLeft = () => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({ left: -320, behavior: 'smooth' });
-    }
-  };
-
-  const handleScrollRight = () => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({ left: 320, behavior: 'smooth' });
-    }
   };
 
   // Compute the 7 dates for the week containing selectedDate
@@ -330,31 +349,6 @@ export const Schedule: React.FC<ScheduleProps> = ({
             </button>
           );
         })}
-      </div>
-
-      {/* Desktop & Laptop Horizontal Scroll Navigation Bar */}
-      <div className="hidden md:flex items-center justify-between px-1">
-        <span className="text-xs font-semibold text-slate-500">
-          Semana Completa • Desplazamiento horizontal fluido
-        </span>
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={handleScrollLeft}
-            className="p-1.5 rounded-xl bg-white/85 hover:bg-white text-slate-600 hover:text-slate-900 border border-slate-200/80 hover:border-slate-300 shadow-2xs transition-all cursor-pointer"
-            title="Desplazar a días anteriores"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={handleScrollRight}
-            className="p-1.5 rounded-xl bg-white/85 hover:bg-white text-slate-600 hover:text-slate-900 border border-slate-200/80 hover:border-slate-300 shadow-2xs transition-all cursor-pointer"
-            title="Desplazar a días siguientes"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
       </div>
 
       {/* Spacious Horizontal Week Board */}
