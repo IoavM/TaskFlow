@@ -2,6 +2,7 @@
   width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
+  padding-top: 0.5rem;
   padding-bottom: 0.85rem;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
@@ -35,6 +36,16 @@
   gap: 1.15rem;
   min-width: min-content;
   align-items: stretch;
+  padding-left: 0.35rem;
+  padding-right: 2.25rem;
+}
+
+.schedule-week-flex::after {
+  content: '';
+  flex: 0 0 1.25rem;
+  width: 1.25rem;
+  min-width: 1.25rem;
+  pointer-events: none;
 }
 
 .schedule-column {
@@ -86,6 +97,12 @@
     flex-direction: column;
     gap: 0.85rem;
     min-width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .schedule-week-flex::after {
+    display: none;
   }
 
   .schedule-column {
