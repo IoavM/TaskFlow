@@ -41,6 +41,18 @@ app.add_middleware(
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
+from fastapi.responses import JSONResponse
+from fastapi import Request
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    traceback.print_exc()
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Error en el servidor: {str(exc)}"}
+    )
+
 @app.get("/health")
 def health_check():
     return {"status": "ok", "app": settings.PROJECT_NAME}

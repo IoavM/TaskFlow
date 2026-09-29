@@ -94,29 +94,22 @@ class TaskService:
         effective_color = task_in.color or task.color or "blue"
         effective_deadline = task_in.deadline or task.deadline
         if task_in.work_blocks is not None and len(task_in.work_blocks) > 0:
-            self.task_repo.db.query(WorkBlock).filter(WorkBlock.task_id == task.id).delete()
-            self.task_repo.db.flush()
-            task.work_blocks.clear()
-            for b in task_in.work_blocks:
-                task.work_blocks.append(
-                    WorkBlock(
-                        task_id=task.id,
-                        day_name=b.day_name,
-                        start_time=b.start_time,
-                        end_time=b.end_time,
-                        block_date=b.block_date,
-                        notes=b.notes,
-                        completed=b.completed,
-                        color=b.color or effective_color
-                    )
+            task.work_blocks = [
+                WorkBlock(
+                    day_name=b.day_name,
+                    start_time=b.start_time,
+                    end_time=b.end_time,
+                    block_date=b.block_date,
+                    notes=b.notes,
+                    completed=b.completed,
+                    color=b.color or effective_color
                 )
+                for b in task_in.work_blocks
+            ]
         elif task_in.work_blocks is not None and len(task_in.work_blocks) == 0 and effective_deadline:
-            self.task_repo.db.query(WorkBlock).filter(WorkBlock.task_id == task.id).delete()
-            self.task_repo.db.flush()
-            task.work_blocks.clear()
-            task.work_blocks.append(_block_from_deadline(effective_deadline, task.title, effective_color))
+            task.work_blocks = [_block_from_deadline(effective_deadline, task.title, effective_color)]
         elif len(task.work_blocks) == 0 and effective_deadline:
-            task.work_blocks.append(_block_from_deadline(effective_deadline, task.title, effective_color))
+            task.work_blocks = [_block_from_deadline(effective_deadline, task.title, effective_color)]
 
         return self.task_repo.save(task)
 
