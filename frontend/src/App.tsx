@@ -5,14 +5,18 @@ import { SchedulePage } from './pages/SchedulePage';
 import { CustomizationProvider } from './context/CustomizationContext';
 import { ToastProvider, useToast } from './context/ToastContext';
 import { ToastContainer } from './components/Toast/ToastContainer';
+import { ServerWarmupBanner } from './components/ServerWarmup/ServerWarmupBanner';
 import { ErrorBoundary } from './components/ErrorBoundary/ErrorBoundary';
-import { api } from './services/api';
+import { api, preemptiveWarmup } from './services/api';
 
 function AppContent() {
   const [currentView, setCurrentView] = useState<'login' | 'register' | 'schedule'>('login');
   const { toast } = useToast();
 
   useEffect(() => {
+    // Fire a silent /health ping to wake Render before the user clicks anything
+    preemptiveWarmup();
+
     const token = localStorage.getItem('taskflow_token');
     if (token) {
       setCurrentView('schedule');
@@ -64,6 +68,7 @@ function AppContent() {
 
   return (
     <>
+      <ServerWarmupBanner />
       {renderContent()}
       <ToastContainer />
     </>
@@ -83,3 +88,4 @@ export function App() {
 }
 
 export default App;
+

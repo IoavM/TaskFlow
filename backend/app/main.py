@@ -56,6 +56,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Idempotent Receiver: ensures mutation requests with X-Idempotency-Key
+# are processed at most once, even if the client retries.
+from app.middleware.idempotency import IdempotencyMiddleware
+app.add_middleware(IdempotencyMiddleware)
+
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 # --- Structured Exception Handlers ---
