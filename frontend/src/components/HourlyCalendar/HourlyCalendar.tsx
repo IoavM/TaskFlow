@@ -81,6 +81,14 @@ export const HourlyCalendar: React.FC<HourlyCalendarProps> = ({
     tasks.forEach((t) => {
       // 1. Recurring task -> Appears on user's selected days in work_blocks
       if (t.is_recurring) {
+        if (t.deadline) {
+          const endD = new Date(t.deadline.replace(' ', 'T'));
+          endD.setHours(23, 59, 59, 999);
+          if (columnDate > endD) {
+            return; // Recurrence has expired
+          }
+        }
+
         if (t.recurrence_rule === 'mensual') {
           let taskDayNum = 1;
           if (t.deadline) {
@@ -112,7 +120,34 @@ export const HourlyCalendar: React.FC<HourlyCalendarProps> = ({
         return;
       }
 
-      // 4. Single Task (Unique / Non-recurring) -> Appears ONLY on its specific date
+      // 2. Single Task (Unique / Non-recurring)
+      const hasWorkBlocksWithWorkPrefix = t.work_blocks.some((b) =>
+        b.notes?.toLowerCase().startsWith('trabajo:')
+      );
+
+      if (hasWorkBlocksWithWorkPrefix) {
+        let deadlineEnd: Date | null = null;
+        if (t.deadline) {
+          const dl = new Date(t.deadline.replace(' ', 'T'));
+          if (!isNaN(dl.getTime())) {
+            deadlineEnd = new Date(dl);
+            deadlineEnd.setHours(23, 59, 59, 999);
+          }
+        }
+
+        const allowWorkBlock = !deadlineEnd || columnDate <= deadlineEnd;
+        if (allowWorkBlock) {
+          t.work_blocks.forEach((b) => {
+            const bNorm = b.day_name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            if (bNorm === dayNameNorm) {
+              list.push({ task: t, block: b });
+            }
+          });
+        }
+        return;
+      }
+
+      // 3. Single Task (Unique / Non-recurring) -> Appears ONLY on its specific date
       if (t.deadline) {
         const d = new Date(t.deadline.replace(' ', 'T'));
         if (!isNaN(d.getTime()) && isSameDay(columnDate, d)) {
@@ -240,7 +275,7 @@ export const HourlyCalendar: React.FC<HourlyCalendarProps> = ({
                             <Repeat className="w-3 h-3 text-white/90 shrink-0" />
                           )}
                           <span className="text-xs font-bold truncate leading-tight">
-                            {task.title}
+                            {block.notes || task.title}
                           </span>
                         </div>
                         {block.id < 10000 && (

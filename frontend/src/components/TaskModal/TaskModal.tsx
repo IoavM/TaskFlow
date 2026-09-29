@@ -42,16 +42,25 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [recurrenceRule, setRecurrenceRule] = useState('semanal');
   const [color, setColor] = useState('blue');
 
-  // Single Task State (Date + Unified Time Range)
+  // Single Task State (Delivery Date & Unified Time Range)
   const [singleDate, setSingleDate] = useState('');
+  const [deliveryTime, setDeliveryTime] = useState('23:59');
   const [singleStartTime, setSingleStartTime] = useState('14:00');
   const [singleEndTime, setSingleEndTime] = useState('16:00');
+
+  // Single Task Optional: Work in specific days before delivery
+  const [wantWorkDays, setWantWorkDays] = useState(false);
+  const [workDays, setWorkDays] = useState<string[]>([]);
+  const [workStartTime, setWorkStartTime] = useState('14:00');
+  const [workEndTime, setWorkEndTime] = useState('16:00');
 
   // Recurring Task State (Days Checkboxes + Time Range)
   const [isDaysExpanded, setIsDaysExpanded] = useState(true);
   const [selectedDays, setSelectedDays] = useState<string[]>(WORK_DAYS);
   const [dailyStartTime, setDailyStartTime] = useState('14:00');
   const [dailyEndTime, setDailyEndTime] = useState('16:00');
+  const [recurrenceDuration, setRecurrenceDuration] = useState<'indefinite' | '1week' | '1month' | 'custom'>('indefinite');
+  const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
 
   const [aiPrompt, setAiPrompt] = useState('');
   const [loadingAI, setLoadingAI] = useState(false);
@@ -78,6 +87,17 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     return fallback;
   };
 
+  const getTodayDayName = () => {
+    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    return days[new Date().getDay()];
+  };
+
+  const handleToggleWorkDay = (day: string) => {
+    setWorkDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+    );
+  };
+
   useEffect(() => {
     if (isOpen) {
       if (taskToEdit) {
@@ -88,32 +108,64 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         setTaskType(isRec ? 'recurring' : 'single');
         setRecurrenceRule(taskToEdit.recurrence_rule || 'semanal');
 
-        // Extract date
+        // Extract delivery date & time
         const dStr = extractDateOnly(taskToEdit.deadline);
         setSingleDate(dStr);
+        setDeliveryTime(extractTimeOnly(taskToEdit.deadline, '23:59'));
 
-        // Extract hours from work_blocks or deadline
+        // Hours from work_blocks
         const block = taskToEdit.work_blocks && taskToEdit.work_blocks.length > 0 ? taskToEdit.work_blocks[0] : null;
-        const sTime = block?.start_time || extractTimeOnly(taskToEdit.deadline, '14:00');
+        const sTime = block?.start_time || '14:00';
         const eTime = block?.end_time || '16:00';
 
         setSingleStartTime(sTime);
         setSingleEndTime(eTime);
         setDailyStartTime(sTime);
         setDailyEndTime(eTime);
+        setWorkStartTime(sTime);
+        setWorkEndTime(eTime);
 
-        // Recurring days
-        if (taskToEdit.work_blocks && taskToEdit.work_blocks.length > 0) {
-          if (taskToEdit.work_blocks.some((b) => b.day_name.toLowerCase() === 'todos')) {
-            setSelectedDays(ALL_DAYS);
+        // Check if single task has work session blocks
+        if (!isRec && taskToEdit.work_blocks && taskToEdit.work_blocks.length > 0) {
+          const hasWorkPrefix = taskToEdit.work_blocks.some((b) => b.notes?.startsWith('Trabajo:'));
+          const days = taskToEdit.work_blocks
+            .map((b) => b.day_name)
+            .filter((d) => ALL_DAYS.includes(d));
+
+          if (hasWorkPrefix || (taskToEdit.deadline && days.length > 0)) {
+            setWantWorkDays(true);
+            setWorkDays(days.length > 0 ? days : [getTodayDayName()]);
           } else {
-            const days = taskToEdit.work_blocks
-              .map((b) => b.day_name)
-              .filter((d) => ALL_DAYS.includes(d));
-            setSelectedDays(days.length > 0 ? days : WORK_DAYS);
+            setWantWorkDays(false);
+            setWorkDays([getTodayDayName()]);
           }
         } else {
-          setSelectedDays(WORK_DAYS);
+          setWantWorkDays(false);
+          setWorkDays([getTodayDayName()]);
+        }
+
+        // Recurring days & duration
+        if (isRec) {
+          if (taskToEdit.work_blocks && taskToEdit.work_blocks.length > 0) {
+            if (taskToEdit.work_blocks.some((b) => b.day_name.toLowerCase() === 'todos')) {
+              setSelectedDays(ALL_DAYS);
+            } else {
+              const days = taskToEdit.work_blocks
+                .map((b) => b.day_name)
+                .filter((d) => ALL_DAYS.includes(d));
+              setSelectedDays(days.length > 0 ? days : WORK_DAYS);
+            }
+          } else {
+            setSelectedDays(WORK_DAYS);
+          }
+
+          if (taskToEdit.deadline) {
+            setRecurrenceDuration('custom');
+            setRecurrenceEndDate(extractDateOnly(taskToEdit.deadline));
+          } else {
+            setRecurrenceDuration('indefinite');
+            setRecurrenceEndDate('');
+          }
         }
 
         setColor(taskToEdit.color || 'blue');
@@ -125,12 +177,19 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         tomorrow.setDate(tomorrow.getDate() + 1);
         const pad = (n: number) => n.toString().padStart(2, '0');
         setSingleDate(`${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`);
+        setDeliveryTime('23:59');
         setSingleStartTime('14:00');
         setSingleEndTime('16:00');
         setDailyStartTime('14:00');
         setDailyEndTime('16:00');
+        setWorkStartTime('14:00');
+        setWorkEndTime('16:00');
+        setWantWorkDays(false);
+        setWorkDays([getTodayDayName()]);
         setSelectedDays(WORK_DAYS);
         setIsDaysExpanded(true);
+        setRecurrenceDuration('indefinite');
+        setRecurrenceEndDate('');
         setTaskType('single');
         setRecurrenceRule('semanal');
         setColor('blue');
@@ -162,28 +221,37 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       const plan = await api.parseTaskWithAI(aiPrompt);
       if (plan.title) setTitle(plan.title);
       if (plan.description) setDescription(plan.description);
+
       if (plan.deadline) {
         setSingleDate(extractDateOnly(plan.deadline));
-        const t = extractTimeOnly(plan.deadline);
-        setSingleStartTime(t);
-        const [h, m] = t.split(':');
-        const endH = (parseInt(h, 10) + 1) % 24;
-        setSingleEndTime(`${endH.toString().padStart(2, '0')}:${m || '00'}`);
+        setDeliveryTime(extractTimeOnly(plan.deadline, '23:59'));
       }
+
       if (plan.is_recurring !== undefined) {
         setTaskType(plan.is_recurring ? 'recurring' : 'single');
       }
       if (plan.recurrence_rule) setRecurrenceRule(plan.recurrence_rule);
+
       if (plan.work_blocks && plan.work_blocks.length > 0) {
         const days = plan.work_blocks.map((b) => b.day_name).filter((d) => ALL_DAYS.includes(d));
-        if (days.length > 0) setSelectedDays(days);
+        if (days.length > 0) {
+          setSelectedDays(days);
+          setWorkDays(days);
+        }
         if (plan.work_blocks[0]?.start_time) {
           setSingleStartTime(plan.work_blocks[0].start_time);
           setDailyStartTime(plan.work_blocks[0].start_time);
+          setWorkStartTime(plan.work_blocks[0].start_time);
         }
         if (plan.work_blocks[0]?.end_time) {
           setSingleEndTime(plan.work_blocks[0].end_time);
           setDailyEndTime(plan.work_blocks[0].end_time);
+          setWorkEndTime(plan.work_blocks[0].end_time);
+        }
+
+        // If not recurring and work blocks provided, activate wantWorkDays!
+        if (plan.deadline && !plan.is_recurring && days.length > 0) {
+          setWantWorkDays(true);
         }
       }
       toast.info('Sugerencia de IA aplicada al formulario.');
@@ -212,29 +280,60 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       let formattedDeadline: string | undefined = undefined;
 
       if (!isRecurring) {
-        // Tarea Única: unified singleDate + singleStartTime
-        const [y, m, d] = singleDate.split('-').map(Number);
-        const dateObj = new Date(y, m - 1, d);
-        const daysMap = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-        const dayName = !isNaN(dateObj.getTime()) ? daysMap[dateObj.getDay()] : 'Lunes';
+        // Tarea Única
+        formattedDeadline = `${singleDate}T${deliveryTime || '23:59'}:00`;
 
-        formattedDeadline = `${singleDate}T${singleStartTime}:00`;
-
-        finalBlocks = [
-          {
-            day_name: dayName,
-            start_time: singleStartTime,
-            end_time: singleEndTime,
-            notes: title,
+        if (wantWorkDays && workDays.length > 0) {
+          // Genera bloques de trabajo como extensiones de la tarea principal
+          finalBlocks = workDays.map((day) => ({
+            day_name: day,
+            start_time: workStartTime,
+            end_time: workEndTime,
+            notes: `Trabajo: ${title}`,
             color: color,
-          },
-        ];
+          }));
+        } else {
+          // Bloque estándar en el día de la entrega
+          const [y, m, d] = singleDate.split('-').map(Number);
+          const dateObj = new Date(y, m - 1, d);
+          const daysMap = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+          const dayName = !isNaN(dateObj.getTime()) ? daysMap[dateObj.getDay()] : 'Lunes';
+
+          finalBlocks = [
+            {
+              day_name: dayName,
+              start_time: singleStartTime,
+              end_time: singleEndTime,
+              block_date: `${singleDate}T${singleStartTime}:00`,
+              notes: title,
+              color: color,
+            },
+          ];
+        }
       } else {
-        // Tarea Recurrente: uses selected days from checkboxes
+        // Tarea Recurrente
         if (selectedDays.length === 0) {
           setError('Debes seleccionar al menos un día en el que se repita la tarea.');
           setSubmitting(false);
           return;
+        }
+
+        // Calcula fecha límite según duración de recurrencia
+        if (recurrenceDuration === '1week') {
+          const d = new Date();
+          d.setDate(d.getDate() + 7);
+          const pad = (n: number) => n.toString().padStart(2, '0');
+          formattedDeadline = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T23:59:00`;
+        } else if (recurrenceDuration === '1month') {
+          const d = new Date();
+          d.setMonth(d.getMonth() + 1);
+          const pad = (n: number) => n.toString().padStart(2, '0');
+          formattedDeadline = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T23:59:00`;
+        } else if (recurrenceDuration === 'custom' && recurrenceEndDate) {
+          formattedDeadline = `${recurrenceEndDate}T23:59:00`;
+        } else {
+          // 'indefinite' -> Sin fecha fin
+          formattedDeadline = undefined;
         }
 
         finalBlocks = selectedDays.map((day) => ({
@@ -432,36 +531,143 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
           {/* Configuración según Tipo de Tarea */}
           {taskType === 'single' ? (
-            <div className="p-4 rounded-xl bg-blue-50/40 border border-blue-100 space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1">
-                  Fecha de Realización
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={singleDate}
-                  onChange={(e) => setSingleDate(e.target.value)}
-                  className="glass-input w-full text-xs px-3 py-2 rounded-lg bg-white"
-                />
+            <div className="p-4 rounded-xl bg-slate-50/80 border border-slate-200/70 space-y-4">
+              {/* Fecha de Entrega / Evento Principal */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 mb-1">
+                    Fecha de Entrega o Realización <span className="text-[#0052FF]">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={singleDate}
+                    onChange={(e) => setSingleDate(e.target.value)}
+                    className="glass-input w-full text-xs px-3 py-2 rounded-lg bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 mb-1">
+                    Hora Límite de Entrega
+                  </label>
+                  <TimePicker
+                    value={deliveryTime}
+                    onChange={(val) => setDeliveryTime(val)}
+                  />
+                </div>
               </div>
 
-              <div className="pt-2 border-t border-blue-100/80 flex items-center justify-between text-xs text-slate-700">
-                <div className="flex items-center gap-1.5 font-medium">
-                  <Clock className="w-3.5 h-3.5 text-[#0052FF]" />
-                  <span>Horario de Realización:</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <TimePicker
-                    value={singleStartTime}
-                    onChange={(val) => setSingleStartTime(val)}
+              {/* Casilla Opcional: ¿Quieres trabajarlo en días específicos? */}
+              <div className="pt-3 border-t border-slate-200/70">
+                <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={wantWorkDays}
+                    onChange={(e) => setWantWorkDays(e.target.checked)}
+                    className="w-4 h-4 rounded text-[#0052FF] focus:ring-0 cursor-pointer"
                   />
-                  <span className="text-slate-400 font-medium">a</span>
-                  <TimePicker
-                    value={singleEndTime}
-                    onChange={(val) => setSingleEndTime(val)}
-                  />
-                </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-800 block">
+                      ¿Quieres trabajarlo en algún día en específico?
+                    </span>
+                    <span className="text-[10px] text-slate-500">
+                      Opcional: Agenda bloques de preparación previos a la entrega
+                    </span>
+                  </div>
+                </label>
+
+                {wantWorkDays && (
+                  <div className="mt-3 p-3.5 rounded-xl bg-white border border-slate-200/80 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800">
+                        Selecciona los días de trabajo
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        Se agendará como &quot;Trabajo: {title || 'Tarea'}&quot;
+                      </span>
+                    </div>
+
+                    {/* Atajos */}
+                    <div className="flex flex-wrap items-center gap-1.5 pb-1 border-b border-slate-100">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 mr-1">Atajos:</span>
+                      <button
+                        type="button"
+                        onClick={() => setWorkDays([getTodayDayName()])}
+                        className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                          workDays.length === 1 && workDays[0] === getTodayDayName()
+                            ? 'bg-[#0052FF] text-white shadow-2xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        Solo Hoy
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setWorkDays(WORK_DAYS)}
+                        className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                          workDays.length === 5 && !workDays.includes('Sábado')
+                            ? 'bg-[#0052FF] text-white shadow-2xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        Lunes a Viernes
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setWorkDays(ALL_DAYS)}
+                        className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                          workDays.length === 7
+                            ? 'bg-[#0052FF] text-white shadow-2xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        Todos los días
+                      </button>
+                    </div>
+
+                    {/* Casillas de los Días */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {ALL_DAYS.map((day) => {
+                        const isChecked = workDays.includes(day);
+                        return (
+                          <label
+                            key={day}
+                            className={`day-checkbox-item ${isChecked ? 'checked' : ''}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleToggleWorkDay(day)}
+                              className="w-4 h-4 rounded text-[#0052FF] focus:ring-0 border-slate-300 cursor-pointer"
+                            />
+                            <span className={`text-xs ${isChecked ? 'font-bold text-[#0052FF]' : 'text-slate-700 font-medium'}`}>
+                              {day}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+
+                    {/* Horario de las sesiones de trabajo */}
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-700">
+                      <div className="flex items-center gap-1.5 font-medium">
+                        <Clock className="w-3.5 h-3.5 text-[#0052FF]" />
+                        <span>Horario de trabajo:</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <TimePicker
+                          value={workStartTime}
+                          onChange={(val) => setWorkStartTime(val)}
+                        />
+                        <span className="text-slate-400 font-medium">a</span>
+                        <TimePicker
+                          value={workEndTime}
+                          onChange={(val) => setWorkEndTime(val)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -603,6 +809,79 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                     onChange={(val) => setDailyEndTime(val)}
                   />
                 </div>
+              </div>
+
+              {/* Duración de la Recurrencia */}
+              <div className="p-3.5 rounded-xl bg-white border border-slate-200/80 space-y-2.5 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800">
+                    Duración de la repetición
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    {recurrenceDuration === 'indefinite' ? 'Se repetirá siempre' : 'Con límite de fecha'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRecurrenceDuration('indefinite')}
+                    className={`py-1.5 px-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      recurrenceDuration === 'indefinite'
+                        ? 'bg-[#0052FF] text-white shadow-2xs'
+                        : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    Indefinidamente
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRecurrenceDuration('1week')}
+                    className={`py-1.5 px-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      recurrenceDuration === '1week'
+                        ? 'bg-[#0052FF] text-white shadow-2xs'
+                        : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    Por 1 semana
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRecurrenceDuration('1month')}
+                    className={`py-1.5 px-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      recurrenceDuration === '1month'
+                        ? 'bg-[#0052FF] text-white shadow-2xs'
+                        : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    Por 1 mes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRecurrenceDuration('custom')}
+                    className={`py-1.5 px-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      recurrenceDuration === 'custom'
+                        ? 'bg-[#0052FF] text-white shadow-2xs'
+                        : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    Hasta fecha...
+                  </button>
+                </div>
+
+                {recurrenceDuration === 'custom' && (
+                  <div className="pt-2 border-t border-slate-100">
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                      Repetir hasta el día:
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={recurrenceEndDate}
+                      onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                      className="glass-input w-full text-xs px-3 py-2 rounded-lg bg-white"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           )}

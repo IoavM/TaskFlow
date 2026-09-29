@@ -12,6 +12,16 @@ interface ScheduleProps {
   onDeleteTask: (taskId: number) => Promise<void>;
   onEditTask: (task: Task) => void;
   onUpdateColor?: (taskId: number, color: string) => Promise<void>;
+  onToggleTaskStatus?: (taskId: number, currentCompleted: boolean) => Promise<void>;
+}
+
+interface ScheduleDayItem {
+  task: Task;
+  block?: WorkBlock;
+  isDelivery?: boolean;
+  displayTitle: string;
+  timeLabel?: string;
+  isCompleted: boolean;
 }
 
 export const Schedule: React.FC<ScheduleProps> = ({
@@ -20,6 +30,7 @@ export const Schedule: React.FC<ScheduleProps> = ({
   onToggleBlock,
   onDeleteTask,
   onEditTask,
+  onToggleTaskStatus,
 }) => {
   const [mobileActiveDay, setMobileActiveDay] = useState<string>('all');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -77,12 +88,20 @@ export const Schedule: React.FC<ScheduleProps> = ({
 
   // Filter tasks that belong to a specific day column
   const getTasksForDay = (dayKey: string, columnDate: Date) => {
-    const items: Array<{ task: Task; block?: WorkBlock; isDeadline?: boolean }> = [];
+    const items: ScheduleDayItem[] = [];
     const dayNameNorm = dayKey.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
     tasks.forEach((task) => {
-      // 1. Recurring task -> Appears only on the specific days selected by user
+      // 1. Recurring task -> Appears only on the specific days selected by user, up to deadline if set
       if (task.is_recurring) {
+        if (task.deadline) {
+          const endD = new Date(task.deadline.replace(' ', 'T'));
+          endD.setHours(23, 59, 59, 999);
+          if (columnDate > endD) {
+            return; // Recurrence has expired
+          }
+        }
+
         if (task.recurrence_rule === 'mensual') {
           let taskDayNum = 1;
           if (task.deadline) {
@@ -91,7 +110,13 @@ export const Schedule: React.FC<ScheduleProps> = ({
             taskDayNum = new Date(task.created_at).getDate();
           }
           if (columnDate.getDate() === taskDayNum) {
-            items.push({ task, block: task.work_blocks[0] });
+            const blk = task.work_blocks[0];
+            items.push({
+              task,
+              block: blk,
+              displayTitle: blk?.notes || task.title,
+              isCompleted: blk ? blk.completed : task.status === 'completed',
+            });
           }
           return;
         }
@@ -104,18 +129,91 @@ export const Schedule: React.FC<ScheduleProps> = ({
 
         if (matchingBlocks.length > 0) {
           matchingBlocks.forEach((block) => {
-            items.push({ task, block });
+            items.push({
+              task,
+              block,
+              displayTitle: block.notes || task.title,
+              isCompleted: block.completed,
+            });
           });
         }
         return;
       }
 
-      // 2. Single Task (Unique / Non-recurring) -> Appears STRICTLY on its exact date
+      // 2. Single Task (Unique / Non-recurring)
+      const hasWorkBlocksWithWorkPrefix = task.work_blocks.some((b) =>
+        b.notes?.toLowerCase().startsWith('trabajo:')
+      );
+
+      if (hasWorkBlocksWithWorkPrefix) {
+        let deadlineEnd: Date | null = null;
+        let isDeliveryDay = false;
+        let deliveryTimeLabel = 'Entrega final';
+
+        if (task.deadline) {
+          const dl = new Date(task.deadline.replace(' ', 'T'));
+          if (!isNaN(dl.getTime())) {
+            deadlineEnd = new Date(dl);
+            deadlineEnd.setHours(23, 59, 59, 999);
+            isDeliveryDay = isSameDay(columnDate, dl);
+            const pad = (n: number) => n.toString().padStart(2, '0');
+            const h = pad(dl.getHours());
+            const m = pad(dl.getMinutes());
+            if (h !== '00' || m !== '00') {
+              deliveryTimeLabel = `Entrega (${h}:${m})`;
+            }
+          }
+        }
+
+        // Display work sessions on matching days prior to deadline
+        const allowWorkBlock = !deadlineEnd || columnDate <= deadlineEnd;
+        if (allowWorkBlock) {
+          const matchingBlocks = task.work_blocks.filter((b) => {
+            const bNorm = b.day_name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            return bNorm === dayNameNorm;
+          });
+
+          matchingBlocks.forEach((block) => {
+            items.push({
+              task,
+              block,
+              displayTitle: block.notes || `Trabajo: ${task.title}`,
+              isCompleted: block.completed,
+            });
+          });
+        }
+
+        // On deadline day, display the final delivery card
+        if (isDeliveryDay) {
+          items.push({
+            task,
+            isDelivery: true,
+            displayTitle: task.title,
+            timeLabel: deliveryTimeLabel,
+            isCompleted: task.status === 'completed',
+          });
+        }
+        return;
+      }
+
+      // Standard single task without work sessions
       if (task.deadline) {
         const d = new Date(task.deadline.replace(' ', 'T'));
         if (!isNaN(d.getTime()) && isSameDay(columnDate, d)) {
           const blk = task.work_blocks[0];
-          items.push({ task, block: blk, isDeadline: !blk });
+          const pad = (n: number) => n.toString().padStart(2, '0');
+          const h = pad(d.getHours());
+          const m = pad(d.getMinutes());
+          const timeLabel = (h !== '00' || m !== '00') ? `Entrega (${h}:${m})` : 'Entrega final';
+
+          items.push({
+            task,
+            block: blk,
+            isDelivery: !blk,
+            displayTitle: task.title,
+            timeLabel,
+            isCompleted: blk ? blk.completed : task.status === 'completed',
+          });
         }
         return;
       }
@@ -124,7 +222,14 @@ export const Schedule: React.FC<ScheduleProps> = ({
         const cd = new Date(task.created_at.replace(' ', 'T'));
         if (!isNaN(cd.getTime()) && isSameDay(columnDate, cd)) {
           const blk = task.work_blocks[0];
-          items.push({ task, block: blk, isDeadline: !blk });
+          items.push({
+            task,
+            block: blk,
+            isDelivery: !blk,
+            displayTitle: task.title,
+            timeLabel: 'Entrega final',
+            isCompleted: blk ? blk.completed : task.status === 'completed',
+          });
         }
         return;
       }
@@ -239,13 +344,13 @@ export const Schedule: React.FC<ScheduleProps> = ({
                       <p className="text-xs text-slate-400 font-medium">Sin tareas para este día</p>
                     </div>
                   ) : (
-                    dayItems.map(({ task, block, isDeadline }, idx) => {
-                      const isCompleted = block ? block.completed : task.status === 'completed';
+                    dayItems.map((item, idx) => {
+                      const { task, block, isDelivery, displayTitle, timeLabel, isCompleted } = item;
                       const colorTheme = getTaskColorTheme(block?.color || task.color);
 
                       return (
                         <div
-                          key={`${task.id}-${block?.id || 'deadline'}-${idx}`}
+                          key={`${task.id}-${block?.id || 'delivery'}-${idx}`}
                           onClick={() => onEditTask(task)}
                           className={`task-item-card cursor-pointer ${isCompleted ? 'completed' : ''}`}
                           style={{
@@ -270,7 +375,7 @@ export const Schedule: React.FC<ScheduleProps> = ({
                                   color: isCompleted ? '#94A3B8' : '#0F172A',
                                 }}
                               >
-                                {task.title || 'Tarea sin título'}
+                                {displayTitle || task.title || 'Tarea sin título'}
                               </h4>
                             </div>
 
@@ -281,7 +386,7 @@ export const Schedule: React.FC<ScheduleProps> = ({
                                 e.stopPropagation();
                                 onDeleteTask(task.id);
                               }}
-                              className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1 rounded-lg transition-colors shrink-0 -mr-1 -mt-0.5"
+                              className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1 rounded-lg transition-colors shrink-0 -mr-1 -mt-0.5 cursor-pointer"
                               title="Eliminar tarea rápidamente"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -305,13 +410,14 @@ export const Schedule: React.FC<ScheduleProps> = ({
                                 </span>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-1.5 text-amber-700 font-medium text-xs whitespace-nowrap">
-                                <CalIcon className="w-3.5 h-3.5 shrink-0" />
-                                <span>Entrega final</span>
+                              <div className="flex items-center gap-1.5 text-blue-700 font-medium text-xs whitespace-nowrap">
+                                <CalIcon className="w-3.5 h-3.5 shrink-0 text-[#0052FF]" />
+                                <span className="font-semibold">{timeLabel || 'Entrega final'}</span>
                               </div>
                             )}
 
-                            {block && block.id < 10000 && (
+                            {/* Checkbox toggle: Block level if block exists, or Task status level for deliveries */}
+                            {block && block.id < 10000 ? (
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -322,6 +428,24 @@ export const Schedule: React.FC<ScheduleProps> = ({
                                 title={block.completed ? "Marcar como pendiente" : "Marcar como completada"}
                               >
                                 {block.completed ? (
+                                  <CheckCircle2 className="w-5 h-5 text-emerald-500 fill-emerald-50" />
+                                ) : (
+                                  <Circle className="w-5 h-5 text-slate-300 hover:text-slate-500" />
+                                )}
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (onToggleTaskStatus) {
+                                    onToggleTaskStatus(task.id, task.status === 'completed');
+                                  }
+                                }}
+                                className="p-1 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors shrink-0 ml-auto cursor-pointer"
+                                title={task.status === 'completed' ? "Marcar entrega como pendiente" : "Marcar entrega como completada"}
+                              >
+                                {task.status === 'completed' ? (
                                   <CheckCircle2 className="w-5 h-5 text-emerald-500 fill-emerald-50" />
                                 ) : (
                                   <Circle className="w-5 h-5 text-slate-300 hover:text-slate-500" />

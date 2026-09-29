@@ -88,6 +88,12 @@ class TaskService:
             task.recurrence_rule = task_in.recurrence_rule
         if task_in.status is not None:
             task.status = task_in.status
+            # Bidirectional completion sync: if task marked completed, complete all work blocks
+            if task.work_blocks:
+                is_completed = (task_in.status == "completed")
+                for b in task.work_blocks:
+                    b.completed = is_completed
+
         if task_in.color is not None:
             task.color = task_in.color
 
@@ -127,6 +133,8 @@ class TaskService:
                 self.task_repo.update_task_status(parent_task.id, user_id, "completed")
             elif any(b.completed for b in parent_task.work_blocks):
                 self.task_repo.update_task_status(parent_task.id, user_id, "in_progress")
+            else:
+                self.task_repo.update_task_status(parent_task.id, user_id, "pending")
 
         return block
 
