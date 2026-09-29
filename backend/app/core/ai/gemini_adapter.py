@@ -20,33 +20,27 @@ class GeminiAdapter(AITaskPlannerPort):
     def parse_task_prompt(self, user_prompt: str) -> Dict[str, Any]:
         if self.client:
             try:
-                today_dt = datetime.now()
-                today_str = today_dt.strftime("%Y-%m-%d %A")
                 prompt_instruction = (
-                    "Eres el motor de inteligencia artificial de TaskFlow, un planificador de productividad ultra preciso.\n"
-                    "Tu objetivo es transformar la instrucción del usuario en lenguaje natural en una estructura de tarea limpia y exacta.\n"
-                    "Debes responder ÚNICAMENTE con un objeto JSON válido con este formato exacto:\n"
+                    "Eres un asistente de productividad y arquitectura de software para la app TaskFlow.\n"
+                    "El usuario te va a dar una instrucción en lenguaje natural para programar una tarea o examen.\n"
+                    "Tu trabajo es extraer los datos y devolver UNICAMENTE un objeto JSON válido con este formato exacto:\n"
                     "{\n"
-                    '  "title": "Nombre conciso y natural de la tarea (ej: \'Laboratorio\', \'Fútbol\', \'Examen de Matemáticas\')",\n'
-                    '  "description": "Descripción clara de la actividad",\n'
-                    '  "deadline": "YYYY-MM-DDTHH:MM:SS" (o null si no tiene fecha límite de entrega),\n'
-                    '  "is_recurring": false,\n'
-                    '  "recurrence_rule": null,\n'
+                    '  "title": "Nombre corto y conciso de la tarea o examen",\n'
+                    '  "description": "Descripción clara de lo que se va a realizar",\n'
+                    '  "deadline": "YYYY-MM-DDTHH:MM:SS" (calcula la fecha de entrega o examen según el día mencionado),\n'
+                    '  "is_recurring": true/false,\n'
+                    '  "recurrence_rule": "diaria" | "semanal" (o null),\n'
                     '  "work_blocks": [\n'
-                    '    {"day_name": "Lunes", "start_time": "14:00", "end_time": "16:00", "notes": "Sesión de trabajo"}\n'
+                    '     {"day_name": "Lunes", "start_time": "14:00", "end_time": "16:00", "notes": "Sesión de estudio"}\n'
                     '  ]\n'
                     "}\n\n"
-                    f"Fecha y hora actual de referencia: {today_str}\n"
-                    "REGLAS OBLIGATORIAS:\n"
-                    "1. DISTINCIÓN CRÍTICA ENTRE ENTREGA (DEADLINE) Y SESIÓN DE TRABAJO (WORK_BLOCKS):\n"
-                    "   - Si el usuario indica fecha de entrega o examen (ej: 'para entregarlo el miércoles', 'entrega el viernes', 'examen el jueves'), calcula esa fecha futura y colócala en 'deadline' (hora 23:59:00 o la hora indicada).\n"
-                    "   - Si el usuario indica cuándo desea trabajarlo, estudiarlo o prepararlo (ej: 'quiero trabajarlo hoy', 'hacerlo hoy de 2 a 4', 'estudiar el martes'), los 'work_blocks' DEBEN corresponder a esos días y horas de trabajo programado (ej: si dice 'hoy', usa el día actual de la semana de la fecha de referencia).\n"
-                    "   - Ejemplo: si hoy es Lunes y dice 'laboratorio para entregar el miércoles y quiero trabajarlo hoy de 2 a 4 pm': 'deadline' es el Miércoles 23:59:00, y 'work_blocks' es un bloque en 'Lunes' de '14:00' a '16:00', con is_recurring: false.\n"
-                    "2. TÍTULO INTELIGENTE: Extrae el nombre nuclear de la actividad. Si el usuario dice 'hacer un laboratorio que es para entregarlo el miércoles y quería trabajarlo hoy', el título DEBE ser 'Laboratorio' (o 'Laboratorio de [Materia]' si se menciona). NUNCA pongas toda la frase como título.\n"
-                    "3. DÍAS VÁLIDOS: 'day_name' DEBE ser exactamente uno de: 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo' (con tildes y mayúscula inicial).\n"
-                    "4. HORAS: Formato 24 horas HH:MM (ej: '2 a 4 pm' -> '14:00' a '16:00'). Si no especifica hora, usa '14:00' a '16:00'.\n"
-                    "5. RECURRENCIA: Pon is_recurring: true únicamente si se indican eventos periódicos continuos ('todos los viernes', 'lunes y miércoles fijos', 'cada semana'). Para proyectos, laboratorios, exámenes o tareas de entrega puntual, pon is_recurring: false y recurrence_rule: null.\n"
-                    "6. Devuelve SOLAMENTE el bloque JSON válido, sin texto adicional."
+                    f"Fecha actual de referencia: {datetime.now().strftime('%Y-%m-%d %A')}\n"
+                    f"Instrucción del usuario: '{user_prompt}'\n\n"
+                    "REGLAS CRÍTICAS:\n"
+                    "1. Si el usuario menciona una sola fecha o evento (ej: 'Tengo una presentación el viernes de 2 a 4' o 'Examen el jueves'), 'work_blocks' debe contener EXACTAMENTE Y ÚNICAMENTE ese día y ese horario. NUNCA agregues sesiones de preparación o días de estudio previos (como lunes o miércoles) a menos que el usuario lo haya pedido con palabras explícitas como 'quiero estudiar lunes y miércoles'.\n"
+                    "2. Si no se especifican días de preparación, coloca un solo bloque para el día y hora indicados por el usuario.\n"
+                    "3. 'day_name' debe ser uno de: 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'.\n"
+                    "4. Devuelve SOLAMENTE el bloque JSON válido, sin texto adicional."
                 )
                 response = self.client.generate_content(prompt_instruction)
                 raw_text = response.text.strip()

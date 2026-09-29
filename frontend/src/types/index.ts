@@ -48,7 +48,6 @@ export interface TaskCreateInput {
   deadline?: string;
   is_recurring: boolean;
   recurrence_rule?: string;
-  status?: 'pending' | 'in_progress' | 'completed';
   color?: string;
   work_blocks: WorkBlockInput[];
 }

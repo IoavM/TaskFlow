@@ -42,13 +42,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [recurrenceRule, setRecurrenceRule] = useState('semanal');
   const [color, setColor] = useState('blue');
 
-  // Deadline State (Fecha Límite / Entrega)
-  const [hasDeadline, setHasDeadline] = useState(false);
-  const [deadlineDate, setDeadlineDate] = useState('');
-  const [deadlineTime, setDeadlineTime] = useState('23:59');
-
-  // Single Task State (Work Session Date + Time Range)
-  const [workDate, setWorkDate] = useState('');
+  // Single Task State (Date + Unified Time Range)
+  const [singleDate, setSingleDate] = useState('');
   const [singleStartTime, setSingleStartTime] = useState('14:00');
   const [singleEndTime, setSingleEndTime] = useState('16:00');
 
@@ -83,42 +78,6 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     return fallback;
   };
 
-  const getTodayStr = () => {
-    const today = new Date();
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
-  };
-
-  const getTomorrowStr = () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`;
-  };
-
-  const getDateInDaysStr = (days: number) => {
-    const d = new Date();
-    d.setDate(d.getDate() + days);
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  };
-
-  const getDateForDayName = (dayName: string) => {
-    const dayNames = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-    const norm = dayName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    const targetDayIdx = dayNames.indexOf(norm);
-    if (targetDayIdx === -1) return getTodayStr();
-
-    const now = new Date();
-    const currentDayIdx = now.getDay();
-    let diff = targetDayIdx - currentDayIdx;
-    if (diff < 0) diff += 7;
-    const target = new Date(now);
-    target.setDate(now.getDate() + diff);
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${target.getFullYear()}-${pad(target.getMonth() + 1)}-${pad(target.getDate())}`;
-  };
-
   useEffect(() => {
     if (isOpen) {
       if (taskToEdit) {
@@ -129,30 +88,13 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         setTaskType(isRec ? 'recurring' : 'single');
         setRecurrenceRule(taskToEdit.recurrence_rule || 'semanal');
 
-        // Extract deadline
-        if (taskToEdit.deadline) {
-          setHasDeadline(true);
-          setDeadlineDate(extractDateOnly(taskToEdit.deadline));
-          setDeadlineTime(extractTimeOnly(taskToEdit.deadline, '23:59'));
-        } else {
-          setHasDeadline(false);
-          setDeadlineDate(getDateInDaysStr(2));
-          setDeadlineTime('23:59');
-        }
+        // Extract date
+        const dStr = extractDateOnly(taskToEdit.deadline);
+        setSingleDate(dStr);
 
-        // Extract work blocks & schedule
+        // Extract hours from work_blocks or deadline
         const block = taskToEdit.work_blocks && taskToEdit.work_blocks.length > 0 ? taskToEdit.work_blocks[0] : null;
-        if (block?.block_date) {
-          setWorkDate(extractDateOnly(block.block_date));
-        } else if (block?.day_name) {
-          setWorkDate(getDateForDayName(block.day_name));
-        } else if (taskToEdit.deadline) {
-          setWorkDate(extractDateOnly(taskToEdit.deadline));
-        } else {
-          setWorkDate(getTodayStr());
-        }
-
-        const sTime = block?.start_time || '14:00';
+        const sTime = block?.start_time || extractTimeOnly(taskToEdit.deadline, '14:00');
         const eTime = block?.end_time || '16:00';
 
         setSingleStartTime(sTime);
@@ -179,10 +121,10 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         // Defaults for new task
         setTitle('');
         setDescription('');
-        setHasDeadline(false);
-        setDeadlineDate(getDateInDaysStr(2));
-        setDeadlineTime('23:59');
-        setWorkDate(getTodayStr());
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        setSingleDate(`${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`);
         setSingleStartTime('14:00');
         setSingleEndTime('16:00');
         setDailyStartTime('14:00');
@@ -220,39 +162,31 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       const plan = await api.parseTaskWithAI(aiPrompt);
       if (plan.title) setTitle(plan.title);
       if (plan.description) setDescription(plan.description);
-
       if (plan.deadline) {
-        setHasDeadline(true);
-        setDeadlineDate(extractDateOnly(plan.deadline));
-        setDeadlineTime(extractTimeOnly(plan.deadline, '23:59'));
+        setSingleDate(extractDateOnly(plan.deadline));
+        const t = extractTimeOnly(plan.deadline);
+        setSingleStartTime(t);
+        const [h, m] = t.split(':');
+        const endH = (parseInt(h, 10) + 1) % 24;
+        setSingleEndTime(`${endH.toString().padStart(2, '0')}:${m || '00'}`);
       }
-
       if (plan.is_recurring !== undefined) {
         setTaskType(plan.is_recurring ? 'recurring' : 'single');
       }
       if (plan.recurrence_rule) setRecurrenceRule(plan.recurrence_rule);
-
       if (plan.work_blocks && plan.work_blocks.length > 0) {
-        const first = plan.work_blocks[0];
-        if (first.block_date) {
-          setWorkDate(extractDateOnly(first.block_date));
-        } else if (first.day_name) {
-          setWorkDate(getDateForDayName(first.day_name));
-        }
-        if (first.start_time) {
-          setSingleStartTime(first.start_time);
-          setDailyStartTime(first.start_time);
-        }
-        if (first.end_time) {
-          setSingleEndTime(first.end_time);
-          setDailyEndTime(first.end_time);
-        }
         const days = plan.work_blocks.map((b) => b.day_name).filter((d) => ALL_DAYS.includes(d));
         if (days.length > 0) setSelectedDays(days);
-      } else {
-        setWorkDate(getTodayStr());
+        if (plan.work_blocks[0]?.start_time) {
+          setSingleStartTime(plan.work_blocks[0].start_time);
+          setDailyStartTime(plan.work_blocks[0].start_time);
+        }
+        if (plan.work_blocks[0]?.end_time) {
+          setSingleEndTime(plan.work_blocks[0].end_time);
+          setDailyEndTime(plan.work_blocks[0].end_time);
+        }
       }
-      toast.info('Sugerencia de IA aplicada: horarios y entrega configurados.');
+      toast.info('Sugerencia de IA aplicada al formulario.');
     } catch (err: any) {
       const msg = err.message || 'No se pudo procesar con el asistente IA. Rellena los datos manualmente.';
       setError(msg);
@@ -277,22 +211,18 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       let finalBlocks: WorkBlockInput[] = [];
       let formattedDeadline: string | undefined = undefined;
 
-      if (hasDeadline && deadlineDate) {
-        formattedDeadline = `${deadlineDate}T${deadlineTime || '23:59'}:00`;
-      }
-
       if (!isRecurring) {
-        // Tarea Única:
-        const effectiveWorkDate = workDate || (hasDeadline ? deadlineDate : getTodayStr());
-        const [y, m, d] = effectiveWorkDate.split('-').map(Number);
+        // Tarea Única: unified singleDate + singleStartTime
+        const [y, m, d] = singleDate.split('-').map(Number);
         const dateObj = new Date(y, m - 1, d);
         const daysMap = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
         const dayName = !isNaN(dateObj.getTime()) ? daysMap[dateObj.getDay()] : 'Lunes';
 
+        formattedDeadline = `${singleDate}T${singleStartTime}:00`;
+
         finalBlocks = [
           {
             day_name: dayName,
-            block_date: `${effectiveWorkDate}T${singleStartTime}:00`,
             start_time: singleStartTime,
             end_time: singleEndTime,
             notes: title,
@@ -467,65 +397,10 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             </div>
           </div>
 
-          {/* Fecha Límite / Entrega (Deadline) */}
-          <div className="p-3.5 rounded-xl bg-amber-50/60 border border-amber-200/80 transition-all">
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={hasDeadline}
-                  onChange={(e) => setHasDeadline(e.target.checked)}
-                  className="w-4 h-4 rounded text-amber-600 focus:ring-0 cursor-pointer"
-                />
-                <div>
-                  <span className="text-xs font-bold text-slate-800 block">
-                    ¿Tiene fecha límite de entrega o examen?
-                  </span>
-                  <span className="text-[10px] text-slate-500">
-                    Para entregas de laboratorios, proyectos, tareas y exámenes
-                  </span>
-                </div>
-              </label>
-              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border transition-all ${
-                hasDeadline
-                  ? 'bg-amber-100 text-amber-800 border-amber-300'
-                  : 'bg-slate-100 text-slate-500 border-slate-200'
-              }`}>
-                {hasDeadline ? 'Fecha de Entrega Activada' : 'Sin fecha límite'}
-              </span>
-            </div>
-
-            {hasDeadline && (
-              <div className="mt-3 pt-3 border-t border-amber-200/60 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                    Día de Entrega / Examen <span className="text-amber-600">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    required={hasDeadline}
-                    value={deadlineDate}
-                    onChange={(e) => setDeadlineDate(e.target.value)}
-                    className="glass-input w-full text-xs px-3 py-2 rounded-lg bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                    Hora Límite de Entrega
-                  </label>
-                  <TimePicker
-                    value={deadlineTime}
-                    onChange={(val) => setDeadlineTime(val)}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* Selector de Tipo: Tarea Única vs Recurrente */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              ¿Cuándo vas a trabajarlo en tu cronograma?
+              Tipo de Programación
             </label>
             <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-slate-100/90 border border-slate-200/70">
               <button
@@ -538,7 +413,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 }`}
               >
                 <Calendar className="w-3.5 h-3.5" />
-                <span>Sesión Puntual</span>
+                <span>Tarea Única (Puntual)</span>
               </button>
               <button
                 type="button"
@@ -550,7 +425,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 }`}
               >
                 <Repeat className="w-3.5 h-3.5" />
-                <span>Varios Días / Recurrente</span>
+                <span>Tarea Recurrente</span>
               </button>
             </div>
           </div>
@@ -559,55 +434,14 @@ export const TaskModal: React.FC<TaskModalProps> = ({
           {taskType === 'single' ? (
             <div className="p-4 rounded-xl bg-blue-50/40 border border-blue-100 space-y-3">
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-bold text-slate-800">
-                    Día en que vas a trabajarlo <span className="text-[#0052FF]">*</span>
-                  </label>
-                  {/* Quick Shortcuts */}
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setWorkDate(getTodayStr())}
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-md transition-all cursor-pointer ${
-                        workDate === getTodayStr()
-                          ? 'bg-[#0052FF] text-white shadow-2xs'
-                          : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                      }`}
-                    >
-                      Hoy
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setWorkDate(getTomorrowStr())}
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-md transition-all cursor-pointer ${
-                        workDate === getTomorrowStr()
-                          ? 'bg-[#0052FF] text-white shadow-2xs'
-                          : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                      }`}
-                    >
-                      Mañana
-                    </button>
-                    {hasDeadline && deadlineDate && (
-                      <button
-                        type="button"
-                        onClick={() => setWorkDate(deadlineDate)}
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md transition-all cursor-pointer ${
-                          workDate === deadlineDate
-                            ? 'bg-amber-600 text-white shadow-2xs'
-                            : 'bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100'
-                        }`}
-                        title="Agendar la sesión de trabajo para el mismo día de la entrega"
-                      >
-                        Día de entrega
-                      </button>
-                    )}
-                  </div>
-                </div>
+                <label className="block text-xs font-bold text-slate-800 mb-1">
+                  Fecha de Realización
+                </label>
                 <input
                   type="date"
                   required
-                  value={workDate}
-                  onChange={(e) => setWorkDate(e.target.value)}
+                  value={singleDate}
+                  onChange={(e) => setSingleDate(e.target.value)}
                   className="glass-input w-full text-xs px-3 py-2 rounded-lg bg-white"
                 />
               </div>

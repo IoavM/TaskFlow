@@ -58,17 +58,6 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
     }
   };
 
-  const handleToggleTaskStatus = async (taskId: number, currentCompleted: boolean) => {
-    try {
-      const nextStatus = currentCompleted ? 'pending' : 'completed';
-      await api.updateTask(taskId, { status: nextStatus });
-      await loadTasks();
-      toast.success(currentCompleted ? 'Tarea marcada como pendiente' : '¡Entrega completada!');
-    } catch (err: any) {
-      toast.error(err.message || 'Error al actualizar el estado de la tarea.');
-    }
-  };
-
   const handleDeleteTask = async (taskId: number) => {
     setTaskToDelete(taskId);
   };
@@ -293,7 +282,6 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
               onDeleteTask={handleDeleteTask}
               onEditTask={handleEditTask}
               onUpdateColor={handleUpdateTaskColor}
-              onToggleTaskStatus={handleToggleTaskStatus}
             />
           ) : (
             <HourlyCalendar
