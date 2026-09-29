@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { CheckCircle2, Circle, Clock, Trash2, Calendar as CalIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Task, WorkBlock } from '../../types';
 import { getTaskColorTheme } from '../../utils/taskColors';
@@ -36,15 +36,76 @@ export const Schedule: React.FC<ScheduleProps> = ({
   const [mobileActiveDay, setMobileActiveDay] = useState<string>('all');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // Desktop Monitor Smooth Navigation: Drag-to-Scroll & Mouse Wheel
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartX = useRef(0);
+  const dragScrollLeft = useRef(0);
+  const hasDragged = useRef(false);
+
+  // Wheel listener: Converts vertical mouse wheel to smooth horizontal scroll on monitors
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    const onWheel = (e: WheelEvent) => {
+      // If user is using a trackpad with native deltaX horizontal swipe, do not override
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+
+      // If container content fits without horizontal scroll, don't intercept
+      if (el.scrollWidth <= el.clientWidth) return;
+
+      if (e.deltaY !== 0) {
+        const atStart = el.scrollLeft <= 0 && e.deltaY < 0;
+        const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 2 && e.deltaY > 0;
+
+        if (!atStart && !atEnd) {
+          e.preventDefault();
+          el.scrollLeft += e.deltaY * 1.15;
+        }
+      }
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('input') || target.closest('select') || target.closest('a')) {
+      return;
+    }
+    if (!scrollContainerRef.current) return;
+
+    setIsDragging(true);
+    hasDragged.current = false;
+    dragStartX.current = e.pageX - scrollContainerRef.current.offsetLeft;
+    dragScrollLeft.current = scrollContainerRef.current.scrollLeft;
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging || !scrollContainerRef.current) return;
+    const x = e.pageX - scrollContainerRef.current.offsetLeft;
+    const walk = (x - dragStartX.current) * 1.35;
+    if (Math.abs(walk) > 4) {
+      hasDragged.current = true;
+    }
+    scrollContainerRef.current.scrollLeft = dragScrollLeft.current - walk;
+  };
+
+  const handleMouseUpOrLeave = () => {
+    setIsDragging(false);
+  };
+
   const handleScrollLeft = () => {
     if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({ left: -300, behavior: 'smooth' });
+      scrollContainerRef.current.scrollBy({ left: -320, behavior: 'smooth' });
     }
   };
 
   const handleScrollRight = () => {
     if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({ left: 300, behavior: 'smooth' });
+      scrollContainerRef.current.scrollBy({ left: 320, behavior: 'smooth' });
     }
   };
 
@@ -297,7 +358,14 @@ export const Schedule: React.FC<ScheduleProps> = ({
       </div>
 
       {/* Spacious Horizontal Week Board */}
-      <div ref={scrollContainerRef} className="schedule-week-scroll-container">
+      <div
+        ref={scrollContainerRef}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUpOrLeave}
+        onMouseLeave={handleMouseUpOrLeave}
+        className={`schedule-week-scroll-container ${isDragging ? 'is-dragging' : ''}`}
+      >
         <div className="schedule-week-flex">
           {weekDays.map((col) => {
             const isHiddenOnMobile = mobileActiveDay !== 'all' && mobileActiveDay !== col.key;
@@ -345,7 +413,10 @@ export const Schedule: React.FC<ScheduleProps> = ({
                       return (
                         <div
                           key={`${task.id}-${block?.id || 'delivery'}-${idx}`}
-                          onClick={() => onEditTask(task)}
+                          onClick={() => {
+                            if (hasDragged.current) return;
+                            onEditTask(task);
+                          }}
                           className={`task-item-card cursor-pointer ${isCompleted ? 'completed' : ''}`}
                           style={{
                             background: isCompleted ? 'rgba(248, 250, 252, 0.9)' : colorTheme.cardBg,

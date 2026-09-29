@@ -3,28 +3,37 @@
   overflow-x: auto;
   padding-bottom: 0.85rem;
   -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
+  /* Hardware acceleration for ultra-fluid 60/120/144Hz monitor rendering */
+  transform: translateZ(0);
+  will-change: scroll-position;
+}
+
+.schedule-week-scroll-container.is-dragging {
+  cursor: grabbing !important;
+  user-select: none;
 }
 
 .schedule-week-scroll-container::-webkit-scrollbar {
-  height: 8px;
+  height: 10px;
 }
 
 .schedule-week-scroll-container::-webkit-scrollbar-track {
-  background: rgba(226, 232, 240, 0.45);
+  background: rgba(226, 232, 240, 0.55);
   border-radius: 9999px;
   margin: 0 0.5rem;
 }
 
 .schedule-week-scroll-container::-webkit-scrollbar-thumb {
-  background: rgba(0, 82, 255, 0.35);
+  background: rgba(0, 82, 255, 0.45);
   border-radius: 9999px;
   border: 2px solid transparent;
   background-clip: padding-box;
+  cursor: grab;
+  transition: background 0.15s ease;
 }
 
 .schedule-week-scroll-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 82, 255, 0.65);
+  background: rgba(0, 82, 255, 0.85);
 }
 
 .schedule-week-flex {
