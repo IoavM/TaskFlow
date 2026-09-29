@@ -158,7 +158,6 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
             <h1 className="text-sm sm:text-base font-bold tracking-tight text-[#0F172A] font-sans leading-tight">
               TaskFlow
             </h1>
-            <p className="text-[10px] text-[#64748B] hidden sm:block">Cronograma y Productividad Inteligente</p>
           </div>
         </div>
 
@@ -198,8 +197,8 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
         </div>
       </header>
 
-      {/* Main Workspace Layout (Centered with max-w-7xl, fluid on laptops and large monitors) */}
-      <main className="relative flex-1 w-full max-w-7xl 2xl:max-w-[1550px] mx-auto px-3 sm:px-6 lg:px-8 py-5 flex flex-col lg:flex-row gap-5 items-start justify-center">
+      {/* Main Workspace Layout (Fluid full width for large monitors and laptops, no wasted side space) */}
+      <main className="relative flex-1 w-full max-w-none px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 py-5 flex flex-col lg:flex-row gap-6 items-start">
         {/* Mobile Drawer Backdrop Overlay (Closes drawer on click) */}
         <div
           className={`fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 transition-opacity duration-300 lg:hidden ${
@@ -213,12 +212,12 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
         {/* KEPT MOUNTED IN DOM AT ALL TIMES SO SPOTIFY NEVER STOPS PLAYING */}
         <aside
           className={`
-            fixed inset-y-0 left-0 z-50 w-[320px] max-w-[85vw] h-full overflow-y-auto bg-slate-50/95 backdrop-blur-2xl border-r border-slate-200/90 shadow-2xl p-4
+            fixed inset-y-0 left-0 z-50 w-[92vw] sm:w-[380px] max-w-[420px] h-full overflow-y-auto bg-slate-50/95 backdrop-blur-2xl border-r border-slate-200/90 shadow-2xl p-3 sm:p-4
             ${isMobileDrawerOpen ? 'translate-x-0 opacity-100 pointer-events-auto' : '-translate-x-full opacity-0 pointer-events-none'}
             lg:static lg:inset-auto lg:h-auto lg:z-auto lg:p-0 lg:bg-transparent lg:backdrop-blur-none lg:border-r-0 lg:shadow-none lg:translate-x-0
             ${isSidebarOpen 
               ? 'lg:w-[340px] xl:w-[350px] 2xl:w-[370px] lg:max-w-none lg:opacity-100 lg:pointer-events-auto lg:overflow-visible' 
-              : 'lg:w-0 lg:max-w-0 lg:opacity-0 lg:pointer-events-none lg:overflow-hidden lg:-mr-5'
+              : 'lg:w-0 lg:max-w-0 lg:opacity-0 lg:pointer-events-none lg:overflow-hidden lg:-mr-6'
             }
             transition-all duration-300 ease-in-out shrink-0
           `}

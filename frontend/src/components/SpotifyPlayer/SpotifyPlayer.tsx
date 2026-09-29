@@ -156,19 +156,19 @@ export const SpotifyPlayer: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => setShowAddForm(!showAddForm)}
-            className={`p-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all duration-200 cursor-pointer ${
               showAddForm
-                ? 'bg-slate-900 text-white'
-                : 'bg-white/80 hover:bg-white text-slate-700 border border-slate-200/80 shadow-2xs'
+                ? 'bg-[#1DB954] text-white shadow-xs shadow-emerald-500/30'
+                : 'bg-white/90 text-slate-700 border border-slate-200/90 shadow-2xs hover:bg-[#1DB954] hover:text-white hover:border-[#1DB954] hover:shadow-md hover:shadow-emerald-500/25 active:scale-95'
             }`}
             title={showAddForm ? 'Cerrar formulario' : 'Añadir nueva playlist'}
           >
             <Plus className="w-3.5 h-3.5" />
-            <span className="text-[11px] hidden sm:inline">Añadir</span>
+            <span className="text-[11px] font-semibold">Añadir</span>
           </button>
 
           <button

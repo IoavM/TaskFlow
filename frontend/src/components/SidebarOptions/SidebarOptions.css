@@ -8,6 +8,12 @@
   padding: 1.25rem;
 }
 
+@media (max-width: 640px) {
+  .sidebar-card {
+    padding: 0.75rem;
+  }
+}
+
 .integration-btn {
   display: flex;
   align-items: center;
