@@ -155,7 +155,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
       <main className="relative z-10 flex-1 w-full max-w-none px-3 sm:px-6 lg:px-6 xl:px-8 2xl:px-10 py-5 flex flex-col lg:flex-row gap-5 items-start">
         {/* LEFT COLUMN: MiniCalendar and Sidebar Options (Music + Autonomous Gemini) */}
         {isSidebarOpen && (
-          <aside className="w-full lg:w-[280px] xl:w-[290px] 2xl:w-[320px] shrink-0 space-y-4">
+          <aside className="w-full lg:w-[340px] xl:w-[350px] 2xl:w-[370px] shrink-0 space-y-4">
             <MiniCalendar
               selectedDate={selectedDate}
               onSelectDate={(date) => setSelectedDate(date)}

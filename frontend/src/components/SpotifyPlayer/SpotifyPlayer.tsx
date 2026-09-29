@@ -43,6 +43,7 @@ export const SpotifyPlayer: React.FC = () => {
   const [customError, setCustomError] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(true);
   const [isCustomMode, setIsCustomMode] = useState(false);
+  const [viewMode, setViewMode] = useState<'playlist' | 'compact'>('playlist');
 
   useEffect(() => {
     const saved = localStorage.getItem('taskflow_spotify_custom');
@@ -116,33 +117,45 @@ export const SpotifyPlayer: React.FC = () => {
           </span>
         </div>
 
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="text-slate-400 hover:text-slate-700 p-1 rounded-md transition-colors"
-          title={isExpanded ? 'Minimizar reproductor' : 'Expandir reproductor'}
-        >
-          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setViewMode(viewMode === 'playlist' ? 'compact' : 'playlist')}
+            className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white/80 hover:bg-white text-slate-700 border border-slate-200/80 shadow-2xs transition-all cursor-pointer"
+            title={viewMode === 'playlist' ? 'Cambiar a reproductor compacto' : 'Ver lista completa de canciones'}
+          >
+            {viewMode === 'playlist' ? 'Compacto' : 'Ver Lista'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="text-slate-400 hover:text-slate-700 p-1 rounded-md transition-colors cursor-pointer"
+            title={isExpanded ? 'Minimizar reproductor' : 'Expandir reproductor'}
+          >
+            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+        </div>
       </div>
 
       {isExpanded && (
         <div className="space-y-3">
           {/* Preset Playlists */}
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="grid grid-cols-2 gap-2">
             {CURATED_PLAYLISTS.map((p) => {
               const isActive = !isCustomMode && selectedPlaylist.id === p.id;
               return (
                 <button
                   key={p.id}
+                  type="button"
                   onClick={() => handleSelectCurated(p)}
-                  className={`px-2 py-1.5 rounded-lg text-[11px] font-medium text-left truncate transition-all flex items-center justify-between ${
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium text-left truncate transition-all flex items-center justify-between cursor-pointer ${
                     isActive
                       ? 'bg-slate-900 text-white shadow-xs'
-                      : 'bg-white/70 text-slate-600 hover:bg-white hover:text-slate-900 border border-white/60'
+                      : 'bg-white/70 text-slate-700 hover:bg-white hover:text-slate-900 border border-white/60'
                   }`}
                 >
                   <span className="truncate">{p.name}</span>
-                  {isActive && <Check className="w-3 h-3 text-[#1DB954] shrink-0 ml-1" />}
+                  {isActive && <Check className="w-3.5 h-3.5 text-[#1DB954] shrink-0 ml-1" />}
                 </button>
               );
             })}
@@ -156,13 +169,13 @@ export const SpotifyPlayer: React.FC = () => {
                 value={customUrl}
                 onChange={(e) => setCustomUrl(e.target.value)}
                 placeholder="Pega cualquier link de Spotify..."
-                className="flex-1 text-[11px] px-2.5 py-1.5 rounded-lg border border-slate-200/80 bg-white/80 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#1DB954] transition-all"
+                className="flex-1 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200/80 bg-white/80 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#1DB954] transition-all"
               />
               <button
                 type="submit"
-                className="px-2.5 py-1.5 bg-[#1DB954] text-white text-[11px] font-semibold rounded-lg hover:bg-[#1aa34a] transition-all flex items-center gap-1 shrink-0 shadow-2xs"
+                className="px-3 py-1.5 bg-[#1DB954] text-white text-xs font-semibold rounded-lg hover:bg-[#1aa34a] transition-all flex items-center gap-1 shrink-0 shadow-2xs cursor-pointer"
               >
-                <Plus className="w-3 h-3" />
+                <Plus className="w-3.5 h-3.5" />
                 <span>Cargar</span>
               </button>
             </div>
@@ -172,21 +185,21 @@ export const SpotifyPlayer: React.FC = () => {
           </form>
 
           {/* Official Spotify Embed Player */}
-          <div className="spotify-embed-container rounded-xl overflow-hidden shadow-xs border border-white/80 bg-black/90">
+          <div className="spotify-embed-container rounded-xl overflow-hidden shadow-sm border border-slate-200/80 bg-black">
             <iframe
               title="Spotify Focus Player"
               src={currentEmbedSrc}
               width="100%"
-              height="152"
+              height={viewMode === 'playlist' ? '352' : '152'}
               frameBorder="0"
               allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
               loading="lazy"
-              className="rounded-xl"
+              className="rounded-xl w-full"
             />
           </div>
 
           {/* Direct Actions: Open in App / Open Web */}
-          <div className="pt-1 flex items-center justify-between text-[11px]">
+          <div className="pt-1 flex items-center justify-between text-xs">
             <a
               href={activeWebUrl}
               target="_blank"
@@ -200,7 +213,7 @@ export const SpotifyPlayer: React.FC = () => {
               className="text-[#1DB954] font-semibold hover:underline flex items-center gap-1"
             >
               <span>Abrir en App</span>
-              <ExternalLink className="w-3 h-3" />
+              <ExternalLink className="w-3.5 h-3.5" />
             </a>
           </div>
         </div>
