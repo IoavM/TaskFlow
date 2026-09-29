@@ -128,7 +128,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
   const completedTasks = tasks.filter((t) => t.status === 'completed').length;
 
   return (
-    <div className="min-h-screen relative flex flex-col text-[#0F172A]">
+    <div className="min-h-screen relative flex flex-col text-[#0F172A] w-full max-w-full overflow-x-hidden">
       {/* Dynamic ambient liquid mesh orbs for visible glass refraction */}
       <div className="ambient-mesh" aria-hidden="true">
         <div className="liquid-orb liquid-orb-1" />
@@ -138,34 +138,34 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
       </div>
 
       {/* Top Navbar with Liquid Glass */}
-      <header className="sticky top-0 z-30 bg-white/75 backdrop-blur-xl border-b border-white/80 shadow-2xs px-6 py-3.5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#0052FF] to-[#3B82F6] text-white flex items-center justify-center shadow-md shadow-blue-500/25 font-bold">
-            TF
-          </div>
-          <div>
-            <h1 className="text-base font-bold tracking-tight text-[#0F172A] font-sans">
-              TaskFlow
-            </h1>
-            <p className="text-[10px] text-[#64748B]">Cronograma y Productividad Inteligente</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 sm:gap-3">
+      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-white/80 shadow-2xs px-3 sm:px-6 py-3 flex items-center justify-between w-full max-w-full">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {/* Mobile Sidebar & Music Trigger */}
           <button
             type="button"
             onClick={() => setIsMobileDrawerOpen(true)}
-            className="lg:hidden p-2 rounded-xl bg-white/85 hover:bg-white text-slate-700 border border-slate-200/80 shadow-2xs flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
+            className="lg:hidden p-2 rounded-xl bg-white/85 hover:bg-white text-slate-700 border border-slate-200/80 shadow-2xs flex items-center gap-1.5 text-xs font-semibold cursor-pointer active:scale-95 transition-all"
             title="Abrir panel lateral y música"
           >
             <PanelLeft className="w-4 h-4 text-[#0052FF]" />
             <span className="hidden xs:inline">Panel</span>
           </button>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/85 border border-slate-200/70 shadow-2xs text-xs text-slate-700">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#0052FF] to-[#3B82F6] text-white flex items-center justify-center shadow-md shadow-blue-500/25 font-bold shrink-0">
+            TF
+          </div>
+          <div>
+            <h1 className="text-sm sm:text-base font-bold tracking-tight text-[#0F172A] font-sans leading-tight">
+              TaskFlow
+            </h1>
+            <p className="text-[10px] text-[#64748B] hidden sm:block">Cronograma y Productividad Inteligente</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/85 border border-slate-200/70 shadow-2xs text-xs text-slate-700">
             <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-400" />
-            <span className="font-semibold text-slate-800 truncate max-w-[110px] sm:max-w-[160px]" title={userDisplayName}>
+            <span className="font-semibold text-slate-800 truncate max-w-[90px] md:max-w-[150px]" title={userDisplayName}>
               {userDisplayName}
             </span>
           </div>
@@ -173,7 +173,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
           {/* Personalization Button */}
           <button
             onClick={() => setIsPersonalizationOpen(true)}
-            className="px-3 py-2 rounded-xl bg-white/80 hover:bg-white text-slate-700 border border-slate-200/80 hover:border-slate-300 text-xs font-semibold transition-all flex items-center gap-1.5 shadow-2xs"
+            className="p-2 sm:px-3 sm:py-2 rounded-xl bg-white/80 hover:bg-white text-slate-700 border border-slate-200/80 hover:border-slate-300 text-xs font-semibold transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
             title="Personalizar temas y Liquid Glass"
           >
             <Palette className="w-3.5 h-3.5 text-[#0052FF]" />
@@ -182,15 +182,15 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
 
           <button
             onClick={handleOpenCreateModal}
-            className="px-4 py-2 rounded-xl bg-[#0052FF] text-white text-xs font-semibold hover:bg-[#0038B6] transition-all flex items-center gap-1.5 shadow-sm shadow-blue-500/30"
+            className="px-3 sm:px-4 py-2 rounded-xl bg-[#0052FF] text-white text-xs font-semibold hover:bg-[#0038B6] transition-all flex items-center gap-1.5 shadow-sm shadow-blue-500/30 cursor-pointer shrink-0"
           >
             <Plus className="w-4 h-4" />
-            <span>Crear Tarea</span>
+            <span className="hidden xs:inline">Crear Tarea</span>
           </button>
 
           <button
             onClick={onLogout}
-            className="p-2 rounded-xl border border-slate-200/80 bg-white/70 text-slate-500 hover:text-red-600 hover:bg-white transition-colors"
+            className="p-2 rounded-xl border border-slate-200/80 bg-white/70 text-slate-500 hover:text-red-600 hover:bg-white transition-colors cursor-pointer shrink-0"
             title="Cerrar sesión"
           >
             <LogOut className="w-4 h-4" />
@@ -198,23 +198,23 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
         </div>
       </header>
 
-      {/* Mobile Drawer Backdrop Overlay (Keeps Spotify active, smooth glassmorphism blur) */}
-      <div
-        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 transition-opacity duration-300 lg:hidden ${
-          isMobileDrawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        }`}
-        onClick={() => setIsMobileDrawerOpen(false)}
-        aria-hidden="true"
-      />
+      {/* Main Workspace Layout (Centered with max-w-7xl, fluid on laptops and large monitors) */}
+      <main className="relative flex-1 w-full max-w-7xl 2xl:max-w-[1550px] mx-auto px-3 sm:px-6 lg:px-8 py-5 flex flex-col lg:flex-row gap-5 items-start justify-center">
+        {/* Mobile Drawer Backdrop Overlay (Closes drawer on click) */}
+        <div
+          className={`fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 transition-opacity duration-300 lg:hidden ${
+            isMobileDrawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
+          onClick={() => setIsMobileDrawerOpen(false)}
+          aria-hidden="true"
+        />
 
-      {/* Main Workspace Layout (Fluid width for large monitors, optimized compact width for laptops) */}
-      <main className="relative z-10 flex-1 w-full max-w-none px-3 sm:px-6 lg:px-6 xl:px-8 2xl:px-10 py-5 flex flex-col lg:flex-row gap-5 items-start">
-        {/* LEFT COLUMN: Persistent MiniCalendar and Sidebar Options (Music + AI) */}
+        {/* LEFT COLUMN: Persistent Sidebar (Desktop) & Animated Slide-Over Drawer (Mobile) */}
         {/* KEPT MOUNTED IN DOM AT ALL TIMES SO SPOTIFY NEVER STOPS PLAYING */}
         <aside
           className={`
-            fixed inset-y-0 left-0 z-50 w-[88%] max-w-[360px] h-full overflow-y-auto bg-slate-50/95 backdrop-blur-2xl border-r border-slate-200/90 shadow-2xl p-4
-            ${isMobileDrawerOpen ? 'translate-x-0' : '-translate-x-full'}
+            fixed inset-y-0 left-0 z-50 w-[320px] max-w-[85vw] h-full overflow-y-auto bg-slate-50/95 backdrop-blur-2xl border-r border-slate-200/90 shadow-2xl p-4
+            ${isMobileDrawerOpen ? 'translate-x-0 opacity-100 pointer-events-auto' : '-translate-x-full opacity-0 pointer-events-none'}
             lg:static lg:inset-auto lg:h-auto lg:z-auto lg:p-0 lg:bg-transparent lg:backdrop-blur-none lg:border-r-0 lg:shadow-none lg:translate-x-0
             ${isSidebarOpen 
               ? 'lg:w-[340px] xl:w-[350px] 2xl:w-[370px] lg:max-w-none lg:opacity-100 lg:pointer-events-auto lg:overflow-visible' 
@@ -230,8 +230,8 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
                 TF
               </div>
               <div>
-                <span className="text-xs font-bold text-slate-800 block">Panel & Spotify</span>
-                <span className="text-[10px] text-slate-500">Música y Productividad</span>
+                <span className="text-xs font-bold text-slate-800 block">Navegación & Música</span>
+                <span className="text-[10px] text-slate-500">Calendario, Spotify e IA</span>
               </div>
             </div>
             <button
@@ -247,7 +247,9 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
           <div className="w-full lg:w-[340px] xl:w-[350px] 2xl:w-[370px] space-y-4">
             <MiniCalendar
               selectedDate={selectedDate}
-              onSelectDate={(date) => setSelectedDate(date)}
+              onSelectDate={(date) => {
+                setSelectedDate(date);
+              }}
             />
 
             <SidebarOptions
