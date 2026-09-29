@@ -2,6 +2,7 @@ import React from 'react';
 import { CheckCircle2, Circle, Clock, Repeat } from 'lucide-react';
 import { Task, WorkBlock } from '../../types';
 import { getTaskColorTheme } from '../../utils/taskColors';
+import { parseDateLocal } from '../../utils/dateUtils';
 import config from './HourlyCalendar.json';
 import './HourlyCalendar.css';
 
@@ -82,7 +83,7 @@ export const HourlyCalendar: React.FC<HourlyCalendarProps> = ({
       // 1. Recurring task -> Appears on user's selected days in work_blocks
       if (t.is_recurring) {
         if (t.deadline) {
-          const endD = new Date(t.deadline.replace(' ', 'T'));
+          const endD = parseDateLocal(t.deadline);
           endD.setHours(23, 59, 59, 999);
           if (columnDate > endD) {
             return; // Recurrence has expired
@@ -92,7 +93,7 @@ export const HourlyCalendar: React.FC<HourlyCalendarProps> = ({
         if (t.recurrence_rule === 'mensual') {
           let taskDayNum = 1;
           if (t.deadline) {
-            taskDayNum = new Date(t.deadline.replace(' ', 'T')).getDate();
+            taskDayNum = parseDateLocal(t.deadline).getDate();
           } else if (t.created_at) {
             taskDayNum = new Date(t.created_at).getDate();
           }
@@ -128,7 +129,7 @@ export const HourlyCalendar: React.FC<HourlyCalendarProps> = ({
       if (hasWorkBlocksWithWorkPrefix) {
         let deadlineEnd: Date | null = null;
         if (t.deadline) {
-          const dl = new Date(t.deadline.replace(' ', 'T'));
+          const dl = parseDateLocal(t.deadline);
           if (!isNaN(dl.getTime())) {
             deadlineEnd = new Date(dl);
             deadlineEnd.setHours(23, 59, 59, 999);
@@ -149,7 +150,7 @@ export const HourlyCalendar: React.FC<HourlyCalendarProps> = ({
 
       // 3. Single Task (Unique / Non-recurring) -> Appears ONLY on its specific date
       if (t.deadline) {
-        const d = new Date(t.deadline.replace(' ', 'T'));
+        const d = parseDateLocal(t.deadline);
         if (!isNaN(d.getTime()) && isSameDay(columnDate, d)) {
           if (t.work_blocks.length > 0) {
             t.work_blocks.forEach((b) => list.push({ task: t, block: b }));

@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { CheckCircle2, Circle, Clock, Trash2, Calendar as CalIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Task, WorkBlock } from '../../types';
 import { getTaskColorTheme } from '../../utils/taskColors';
+import { parseDateLocal, isSameDay } from '../../utils/dateUtils';
 import config from './Schedule.json';
 import './Schedule.css';
 
@@ -81,11 +82,6 @@ export const Schedule: React.FC<ScheduleProps> = ({
 
   const weekDays = getWeekDates(selectedDate);
 
-  const isSameDay = (d1: Date, d2: Date) =>
-    d1.getDate() === d2.getDate() &&
-    d1.getMonth() === d2.getMonth() &&
-    d1.getFullYear() === d2.getFullYear();
-
   // Filter tasks that belong to a specific day column
   const getTasksForDay = (dayKey: string, columnDate: Date) => {
     const items: ScheduleDayItem[] = [];
@@ -95,7 +91,7 @@ export const Schedule: React.FC<ScheduleProps> = ({
       // 1. Recurring task -> Appears only on the specific days selected by user, up to deadline if set
       if (task.is_recurring) {
         if (task.deadline) {
-          const endD = new Date(task.deadline.replace(' ', 'T'));
+          const endD = parseDateLocal(task.deadline);
           endD.setHours(23, 59, 59, 999);
           if (columnDate > endD) {
             return; // Recurrence has expired
@@ -105,7 +101,7 @@ export const Schedule: React.FC<ScheduleProps> = ({
         if (task.recurrence_rule === 'mensual') {
           let taskDayNum = 1;
           if (task.deadline) {
-            taskDayNum = new Date(task.deadline.replace(' ', 'T')).getDate();
+            taskDayNum = parseDateLocal(task.deadline).getDate();
           } else if (task.created_at) {
             taskDayNum = new Date(task.created_at).getDate();
           }
@@ -151,7 +147,7 @@ export const Schedule: React.FC<ScheduleProps> = ({
         let deliveryTimeLabel = 'Entrega final';
 
         if (task.deadline) {
-          const dl = new Date(task.deadline.replace(' ', 'T'));
+          const dl = parseDateLocal(task.deadline);
           if (!isNaN(dl.getTime())) {
             deadlineEnd = new Date(dl);
             deadlineEnd.setHours(23, 59, 59, 999);
@@ -198,7 +194,7 @@ export const Schedule: React.FC<ScheduleProps> = ({
 
       // Standard single task without work sessions
       if (task.deadline) {
-        const d = new Date(task.deadline.replace(' ', 'T'));
+        const d = parseDateLocal(task.deadline);
         if (!isNaN(d.getTime()) && isSameDay(columnDate, d)) {
           const blk = task.work_blocks[0];
           const pad = (n: number) => n.toString().padStart(2, '0');
