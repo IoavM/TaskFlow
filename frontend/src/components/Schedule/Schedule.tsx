@@ -36,97 +36,35 @@ export const Schedule: React.FC<ScheduleProps> = ({
   const [mobileActiveDay, setMobileActiveDay] = useState<string>('all');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Desktop Monitor Smooth Navigation: Drag-to-Scroll & Fluid Mouse Wheel
-  const [isDragging, setIsDragging] = useState(false);
-  const dragStartX = useRef(0);
-  const dragScrollLeft = useRef(0);
-  const hasDragged = useRef(false);
-
-  // Wheel listener: Converts vertical mouse wheel to ultra-fluid horizontal momentum scroll on monitors
+  // Wheel listener: Converts vertical mouse wheel to immediate, stutter-free horizontal scroll on desktop monitors
   useEffect(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
 
-    let targetScroll = el.scrollLeft;
-    let animId: number | null = null;
-
-    const smoothScroll = () => {
-      const current = el.scrollLeft;
-      const diff = targetScroll - current;
-      if (Math.abs(diff) > 0.5) {
-        el.scrollLeft = current + diff * 0.16;
-        animId = requestAnimationFrame(smoothScroll);
-      } else {
-        el.scrollLeft = targetScroll;
-        animId = null;
-      }
-    };
-
     const onWheel = (e: WheelEvent) => {
-      // If user is using a trackpad with native deltaX horizontal swipe, do not override
+      // If user is holding shift, native browser horizontal scroll is active
+      if (e.shiftKey) return;
+      // If native horizontal trackpad swipe
       if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-
-      // If container content fits without horizontal scroll, don't intercept
+      // If container fits without scroll, don't intercept
       if (el.scrollWidth <= el.clientWidth) return;
 
-      const maxScroll = el.scrollWidth - el.clientWidth;
+      // Allow vertical page scroll if at boundaries
       const atStart = el.scrollLeft <= 0 && e.deltaY < 0;
-      const atEnd = el.scrollLeft >= maxScroll - 1 && e.deltaY > 0;
+      const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 2 && e.deltaY > 0;
       if (atStart || atEnd) return;
 
       e.preventDefault();
-      if (animId === null) {
-        targetScroll = el.scrollLeft;
+      let delta = e.deltaY;
+      if (e.deltaMode === 1) {
+        delta *= 32; // Normalize line scrolling (e.g. Firefox)
       }
-      targetScroll = Math.max(0, Math.min(maxScroll, targetScroll + e.deltaY * 1.25));
-      if (animId === null) {
-        animId = requestAnimationFrame(smoothScroll);
-      }
-    };
-
-    const onScroll = () => {
-      if (animId === null) {
-        targetScroll = el.scrollLeft;
-      }
+      el.scrollLeft += delta;
     };
 
     el.addEventListener('wheel', onWheel, { passive: false });
-    el.addEventListener('scroll', onScroll, { passive: true });
-
-    return () => {
-      el.removeEventListener('wheel', onWheel);
-      el.removeEventListener('scroll', onScroll);
-      if (animId !== null) cancelAnimationFrame(animId);
-    };
+    return () => el.removeEventListener('wheel', onWheel);
   }, []);
-
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return;
-    const target = e.target as HTMLElement;
-    if (target.closest('button') || target.closest('input') || target.closest('select') || target.closest('a')) {
-      return;
-    }
-    if (!scrollContainerRef.current) return;
-
-    setIsDragging(true);
-    hasDragged.current = false;
-    dragStartX.current = e.pageX - scrollContainerRef.current.offsetLeft;
-    dragScrollLeft.current = scrollContainerRef.current.scrollLeft;
-  };
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isDragging || !scrollContainerRef.current) return;
-    const x = e.pageX - scrollContainerRef.current.offsetLeft;
-    const walk = (x - dragStartX.current) * 1.2;
-    if (Math.abs(walk) > 4) {
-      hasDragged.current = true;
-    }
-    scrollContainerRef.current.scrollLeft = dragScrollLeft.current - walk;
-  };
-
-  const handleMouseUpOrLeave = () => {
-    setIsDragging(false);
-  };
 
   // Compute the 7 dates for the week containing selectedDate
   const getWeekDates = (baseDate: Date) => {
@@ -354,11 +292,7 @@ export const Schedule: React.FC<ScheduleProps> = ({
       {/* Spacious Horizontal Week Board */}
       <div
         ref={scrollContainerRef}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUpOrLeave}
-        onMouseLeave={handleMouseUpOrLeave}
-        className={`schedule-week-scroll-container ${isDragging ? 'is-dragging' : ''}`}
+        className="schedule-week-scroll-container"
       >
         <div className="schedule-week-flex">
           {weekDays.map((col) => {
@@ -407,10 +341,7 @@ export const Schedule: React.FC<ScheduleProps> = ({
                       return (
                         <div
                           key={`${task.id}-${block?.id || 'delivery'}-${idx}`}
-                          onClick={() => {
-                            if (hasDragged.current) return;
-                            onEditTask(task);
-                          }}
+                          onClick={() => onEditTask(task)}
                           className={`task-item-card cursor-pointer ${isCompleted ? 'completed' : ''}`}
                           style={{
                             background: isCompleted ? 'rgba(248, 250, 252, 0.9)' : colorTheme.cardBg,

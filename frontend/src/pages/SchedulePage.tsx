@@ -161,10 +161,10 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/85 border border-slate-200/70 shadow-2xs text-xs text-slate-700">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/85 border border-slate-200/70 shadow-2xs text-xs text-slate-700">
             <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-400" />
-            <span className="font-semibold text-slate-800 truncate max-w-[90px] md:max-w-[150px]" title={userDisplayName}>
+            <span className="font-semibold text-slate-800 truncate max-w-[110px] sm:max-w-[160px]" title={userDisplayName}>
               {userDisplayName}
             </span>
           </div>
@@ -172,19 +172,19 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
           {/* Personalization Button */}
           <button
             onClick={() => setIsPersonalizationOpen(true)}
-            className="p-2 sm:px-3 sm:py-2 rounded-xl bg-white/80 hover:bg-white text-slate-700 border border-slate-200/80 hover:border-slate-300 text-xs font-semibold transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
+            className="px-3 py-2 rounded-xl bg-white/80 hover:bg-white text-slate-700 border border-slate-200/80 hover:border-slate-300 text-xs font-semibold transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
             title="Personalizar temas y Liquid Glass"
           >
             <Palette className="w-3.5 h-3.5 text-[#0052FF]" />
-            <span className="hidden md:inline">Personalizar</span>
+            <span className="hidden sm:inline">Personalizar</span>
           </button>
 
           <button
             onClick={handleOpenCreateModal}
-            className="px-3 sm:px-4 py-2 rounded-xl bg-[#0052FF] text-white text-xs font-semibold hover:bg-[#0038B6] transition-all flex items-center gap-1.5 shadow-sm shadow-blue-500/30 cursor-pointer shrink-0"
+            className="px-4 py-2 rounded-xl bg-[#0052FF] text-white text-xs font-semibold hover:bg-[#0038B6] transition-all flex items-center gap-1.5 shadow-sm shadow-blue-500/30 cursor-pointer shrink-0"
           >
             <Plus className="w-4 h-4" />
-            <span className="hidden xs:inline">Crear Tarea</span>
+            <span>Crear Tarea</span>
           </button>
 
           <button
