@@ -1,4 +1,5 @@
 from typing import List
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db.session import get_db
@@ -37,12 +38,28 @@ def create_task_directly_with_ai(
     plan = adapter.parse_task_prompt(payload.prompt)
 
     # Transform parsed plan into TaskCreate schema with builder
+    days_map_idx = {
+        "lunes": 0, "martes": 1, "miércoles": 2, "miercoles": 2,
+        "jueves": 3, "viernes": 4, "sábado": 5, "sabado": 5, "domingo": 6
+    }
+    now = datetime.now()
+
     blocks_in = []
     for b in plan.get("work_blocks", []):
+        day_str = b.get("day_name", "Lunes")
+        b_date = b.get("block_date")
+        if not b_date:
+            d_idx = days_map_idx.get(day_str.lower(), now.weekday())
+            diff = (d_idx - now.weekday()) % 7
+            target_dt = now + timedelta(days=diff)
+            st = b.get("start_time") or "14:00"
+            b_date = f"{target_dt.strftime('%Y-%m-%d')}T{st}:00"
+
         blocks_in.append(WorkBlockCreate(
-            day_name=b.get("day_name", "Lunes"),
+            day_name=day_str,
             start_time=b.get("start_time"),
             end_time=b.get("end_time"),
+            block_date=b_date,
             notes=b.get("notes")
         ))
 

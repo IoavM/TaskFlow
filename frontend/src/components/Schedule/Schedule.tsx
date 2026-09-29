@@ -12,6 +12,7 @@ interface ScheduleProps {
   onDeleteTask: (taskId: number) => Promise<void>;
   onEditTask: (task: Task) => void;
   onUpdateColor?: (taskId: number, color: string) => Promise<void>;
+  onToggleTaskStatus?: (taskId: number, currentCompleted: boolean) => Promise<void>;
 }
 
 export const Schedule: React.FC<ScheduleProps> = ({
@@ -20,6 +21,7 @@ export const Schedule: React.FC<ScheduleProps> = ({
   onToggleBlock,
   onDeleteTask,
   onEditTask,
+  onToggleTaskStatus,
 }) => {
   const [mobileActiveDay, setMobileActiveDay] = useState<string>('all');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -75,13 +77,26 @@ export const Schedule: React.FC<ScheduleProps> = ({
     d1.getMonth() === d2.getMonth() &&
     d1.getFullYear() === d2.getFullYear();
 
+  const formatDeadlineBadge = (iso?: string) => {
+    if (!iso) return '';
+    const d = new Date(iso.replace(' ', 'T'));
+    if (isNaN(d.getTime())) return '';
+    const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const dayStr = days[d.getDay()];
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const timeStr = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return timeStr === '23:59' || timeStr === '00:00'
+      ? `${dayStr} ${d.getDate()}`
+      : `${dayStr} ${d.getDate()} (${timeStr})`;
+  };
+
   // Filter tasks that belong to a specific day column
   const getTasksForDay = (dayKey: string, columnDate: Date) => {
     const items: Array<{ task: Task; block?: WorkBlock; isDeadline?: boolean }> = [];
     const dayNameNorm = dayKey.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
     tasks.forEach((task) => {
-      // 1. Recurring task -> Appears only on the specific days selected by user
+      // 1. Recurring task -> Appears on the specific days selected by user
       if (task.is_recurring) {
         if (task.recurrence_rule === 'mensual') {
           let taskDayNum = 1;
@@ -104,29 +119,59 @@ export const Schedule: React.FC<ScheduleProps> = ({
 
         if (matchingBlocks.length > 0) {
           matchingBlocks.forEach((block) => {
-            items.push({ task, block });
+            items.push({ task, block, isDeadline: false });
           });
         }
         return;
       }
 
-      // 2. Single Task (Unique / Non-recurring) -> Appears STRICTLY on its exact date
+      // 2. Single Task (Unique / Non-recurring)
+      let addedWorkBlock = false;
+
+      // Check work blocks (days scheduled to do the work)
+      if (task.work_blocks && task.work_blocks.length > 0) {
+        task.work_blocks.forEach((block) => {
+          let matchesThisDay = false;
+
+          if (block.block_date) {
+            const bDate = new Date(block.block_date.replace(' ', 'T'));
+            if (!isNaN(bDate.getTime()) && isSameDay(columnDate, bDate)) {
+              matchesThisDay = true;
+            }
+          } else if (block.day_name) {
+            const bNorm = block.day_name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            if (bNorm === dayNameNorm) {
+              matchesThisDay = true;
+            }
+          }
+
+          if (matchesThisDay) {
+            const isDeadlineDay = Boolean(
+              task.deadline && isSameDay(columnDate, new Date(task.deadline.replace(' ', 'T')))
+            );
+            items.push({ task, block, isDeadline: isDeadlineDay });
+            addedWorkBlock = true;
+          }
+        });
+      }
+
+      // Check if this column is the deadline day (and not already shown as a work block on this same day)
       if (task.deadline) {
         const d = new Date(task.deadline.replace(' ', 'T'));
         if (!isNaN(d.getTime()) && isSameDay(columnDate, d)) {
-          const blk = task.work_blocks[0];
-          items.push({ task, block: blk, isDeadline: !blk });
+          if (!addedWorkBlock) {
+            items.push({ task, block: undefined, isDeadline: true });
+          }
+          return;
         }
-        return;
       }
 
-      if (task.created_at) {
+      // Fallback: If no work blocks and no deadline, check created_at
+      if ((!task.work_blocks || task.work_blocks.length === 0) && !task.deadline && task.created_at) {
         const cd = new Date(task.created_at.replace(' ', 'T'));
         if (!isNaN(cd.getTime()) && isSameDay(columnDate, cd)) {
-          const blk = task.work_blocks[0];
-          items.push({ task, block: blk, isDeadline: !blk });
+          items.push({ task, block: undefined, isDeadline: false });
         }
-        return;
       }
     });
 
@@ -263,15 +308,29 @@ export const Schedule: React.FC<ScheduleProps> = ({
                                 style={{ background: colorTheme.accent }}
                                 title={`Color: ${colorTheme.name}`}
                               />
-                              <h4
-                                className="text-[13px] font-bold leading-snug break-words"
-                                style={{
-                                  textDecoration: isCompleted ? 'line-through' : 'none',
-                                  color: isCompleted ? '#94A3B8' : '#0F172A',
-                                }}
-                              >
-                                {task.title || 'Tarea sin título'}
-                              </h4>
+                              <div className="min-w-0 flex-1">
+                                <h4
+                                  className="text-[13px] font-bold leading-snug break-words"
+                                  style={{
+                                    textDecoration: isCompleted ? 'line-through' : 'none',
+                                    color: isCompleted ? '#94A3B8' : '#0F172A',
+                                  }}
+                                >
+                                  {task.title || 'Tarea sin título'}
+                                </h4>
+
+                                {/* Deadline Indicator Badge */}
+                                {task.deadline && !isDeadline && (
+                                  <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold text-amber-800 bg-amber-50/90 border border-amber-200/80 px-1.5 py-0.5 rounded-md">
+                                    <span>🎯 Entrega: {formatDeadlineBadge(task.deadline)}</span>
+                                  </div>
+                                )}
+                                {task.deadline && isDeadline && block && (
+                                  <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-semibold text-amber-900 bg-amber-100/90 border border-amber-300 px-1.5 py-0.5 rounded-md">
+                                    <span>🎯 ¡Entrega Hoy!</span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
 
                             {/* Quick Delete Only */}
@@ -305,13 +364,13 @@ export const Schedule: React.FC<ScheduleProps> = ({
                                 </span>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-1.5 text-amber-700 font-medium text-xs whitespace-nowrap">
-                                <CalIcon className="w-3.5 h-3.5 shrink-0" />
-                                <span>Entrega final</span>
+                              <div className="flex items-center gap-1.5 text-amber-800 font-bold text-xs whitespace-nowrap bg-amber-50/80 px-2 py-0.5 rounded-md border border-amber-200/70">
+                                <CalIcon className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+                                <span>🎯 Entrega Final {task.deadline ? `(${formatDeadlineBadge(task.deadline)})` : ''}</span>
                               </div>
                             )}
 
-                            {block && block.id < 10000 && (
+                            {block && block.id < 10000 ? (
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -322,6 +381,24 @@ export const Schedule: React.FC<ScheduleProps> = ({
                                 title={block.completed ? "Marcar como pendiente" : "Marcar como completada"}
                               >
                                 {block.completed ? (
+                                  <CheckCircle2 className="w-5 h-5 text-emerald-500 fill-emerald-50" />
+                                ) : (
+                                  <Circle className="w-5 h-5 text-slate-300 hover:text-slate-500" />
+                                )}
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (onToggleTaskStatus) {
+                                    onToggleTaskStatus(task.id, task.status === 'completed');
+                                  }
+                                }}
+                                className="p-1 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors shrink-0 ml-auto cursor-pointer"
+                                title={task.status === 'completed' ? "Marcar entrega como pendiente" : "Marcar entrega como completada"}
+                              >
+                                {task.status === 'completed' ? (
                                   <CheckCircle2 className="w-5 h-5 text-emerald-500 fill-emerald-50" />
                                 ) : (
                                   <Circle className="w-5 h-5 text-slate-300 hover:text-slate-500" />
