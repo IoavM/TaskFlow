@@ -101,8 +101,9 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
 
   const handleDirectAICreate = async (prompt: string) => {
     try {
-      await api.createTaskDirectlyWithAI(prompt);
-      toast.success('¡Tarea creada exitosamente con IA!');
+      const res = await api.createTaskDirectlyWithAI(prompt);
+      const count = Array.isArray(res) ? res.length : 1;
+      toast.success(count > 1 ? `¡${count} tareas creadas exitosamente con IA!` : '¡Tarea creada exitosamente con IA!');
       await loadTasks();
     } catch (err: any) {
       toast.error(err.message || 'Error al generar la tarea con IA');

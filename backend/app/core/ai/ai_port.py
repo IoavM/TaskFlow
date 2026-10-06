@@ -3,7 +3,7 @@ from typing import Dict, Any
 
 class AITaskPlannerPort(ABC):
     @abstractmethod
-    def parse_task_prompt(self, user_prompt: str) -> Dict[str, Any]:
+    def parse_task_prompt(self, user_prompt: str) -> Any:
         """
         Parses a natural language task description into structured task data
         with planned work blocks and deadline.

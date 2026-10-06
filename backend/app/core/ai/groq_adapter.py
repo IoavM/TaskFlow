@@ -23,28 +23,36 @@ class GroqAdapter(AITaskPlannerPort):
                 print(f"[GroqAdapter] Initialization error: {e}")
                 self.client = None
 
-    def parse_task_prompt(self, user_prompt: str) -> Dict[str, Any]:
+    def parse_task_prompt(self, user_prompt: str) -> Any:
         if self.client:
             for model_name in self.CANDIDATE_MODELS:
                 try:
                     today_str = datetime.now().strftime("%Y-%m-%d %A")
                     system_prompt = (
                         "Eres el motor de inteligencia artificial de TaskFlow, un planificador de productividad ultra preciso.\n"
-                        "Tu objetivo es transformar la instrucción del usuario en lenguaje natural en una estructura de tarea limpia y exacta.\n"
-                        "Debes responder ÚNICAMENTE con un objeto JSON válido con este formato exacto:\n"
+                        "Tu objetivo es transformar la instrucción del usuario en lenguaje natural en una o varias tareas limpias y exactas.\n\n"
+                        "FORMATO DE RESPUESTA:\n"
+                        "- Si el usuario pide UNA SOLA TAREA, responde ÚNICAMENTE con un objeto JSON:\n"
                         "{\n"
-                        '  "title": "Nombre conciso y natural de la tarea (ej: \'Fútbol\', \'Examen de Matemáticas\', \'Lectura de Libro\')",\n'
+                        '  "title": "Nombre conciso y natural de la tarea (ej: \'Fútbol\', \'Examen de Matemáticas\')",\n'
                         '  "description": "Descripción clara de la actividad",\n'
                         '  "deadline": "YYYY-MM-DDTHH:MM:SS",\n'
-                        '  "is_recurring": true,\n'
-                        '  "recurrence_rule": "semanal",\n'
+                        '  "is_recurring": true/false,\n'
+                        '  "recurrence_rule": "semanal" o null,\n'
                         '  "work_blocks": [\n'
-                        '    {"day_name": "Martes", "start_time": "14:00", "end_time": "16:00", "notes": "Sesión programada"}\n'
+                        '    {"day_name": "Miércoles", "start_time": "14:00", "end_time": "16:00", "notes": "Sesión programada"}\n'
+                        '  ]\n'
+                        "}\n\n"
+                        "- Si el usuario pide DOS O MÁS TAREAS DIFERENTES (ej: 'dos tareas para el miércoles, una de matemáticas y otra de historia'), responde con un objeto JSON con la clave 'tasks' que contenga una lista de tareas, o un arreglo JSON de tareas:\n"
+                        "{\n"
+                        '  "tasks": [\n'
+                        '    {"title": "Matemáticas", "description": "Estudiar matemáticas", "deadline": "YYYY-MM-DDTHH:MM:SS", "is_recurring": false, "recurrence_rule": null, "work_blocks": [...]},\n'
+                        '    {"title": "Historia", "description": "Estudiar historia", "deadline": "YYYY-MM-DDTHH:MM:SS", "is_recurring": false, "recurrence_rule": null, "work_blocks": [...]}\n'
                         '  ]\n'
                         "}\n\n"
                         f"Fecha actual de referencia: {today_str}\n"
                         "REGLAS OBLIGATORIAS:\n"
-                        "1. TÍTULO INTELIGENTE: Extrae el nombre nuclear de la actividad. Si el usuario dice 'martes y juves tengo fútbol de 2 a 4 pm', el título DEBE ser 'Fútbol' (NO pongas toda la frase como título).\n"
+                        "1. TÍTULO INTELIGENTE: Extrae el nombre nuclear de la actividad. Si el usuario dice 'martes y juves tengo fútbol de 2 a 4 pm', el título DEBE ser 'Fútbol'.\n"
                         "2. CORRECCIÓN DE TIPOS Y DIAS: Si el usuario escribe errores como 'juves' (Jueves), 'miercoles' (Miércoles), 'sabdo' (Sábado), 'domngo' (Domingo), corrígelos al nombre formal.\n"
                         "3. DÍAS VÁLIDOS: 'day_name' DEBE ser exactamente uno de: 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo' (con tildes y mayúscula inicial).\n"
                         "4. CERO DÍAS FANTASMAS: Si el usuario dice 'martes y juves', genera bloques ÚNICAMENTE para Martes y Jueves. NUNCA agregues sesiones de preparación en Lunes ni Miércoles ni ningún otro día no solicitado.\n"
@@ -65,13 +73,32 @@ class GroqAdapter(AITaskPlannerPort):
                     raw_content = response.choices[0].message.content.strip()
                     parsed = json.loads(raw_content)
                     
-                    # Sanitize and ensure format
-                    if "work_blocks" in parsed and isinstance(parsed["work_blocks"], list):
-                        valid_days = {"lunes": "Lunes", "martes": "Martes", "miercoles": "Miércoles", "miércoles": "Miércoles", "jueves": "Jueves", "viernes": "Viernes", "sabado": "Sábado", "sábado": "Sábado", "domingo": "Domingo"}
-                        for b in parsed["work_blocks"]:
-                            raw_day = str(b.get("day_name", "")).strip().lower()
-                            if raw_day in valid_days:
-                                b["day_name"] = valid_days[raw_day]
+                    # Sanitize days in work_blocks across both single and multi-task responses
+                    valid_days = {
+                        "lunes": "Lunes", "martes": "Martes", "miercoles": "Miércoles",
+                        "miércoles": "Miércoles", "jueves": "Jueves", "viernes": "Viernes",
+                        "sabado": "Sábado", "sábado": "Sábado", "domingo": "Domingo"
+                    }
+
+                    def _sanitize_task_dict(t: dict):
+                        if not isinstance(t, dict):
+                            return
+                        if "work_blocks" in t and isinstance(t["work_blocks"], list):
+                            for b in t["work_blocks"]:
+                                if isinstance(b, dict):
+                                    raw_day = str(b.get("day_name", "")).strip().lower()
+                                    if raw_day in valid_days:
+                                        b["day_name"] = valid_days[raw_day]
+
+                    if isinstance(parsed, list):
+                        for item in parsed:
+                            _sanitize_task_dict(item)
+                    elif isinstance(parsed, dict):
+                        if "tasks" in parsed and isinstance(parsed["tasks"], list):
+                            for item in parsed["tasks"]:
+                                _sanitize_task_dict(item)
+                        else:
+                            _sanitize_task_dict(parsed)
                     
                     return parsed
                 except Exception as e:

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db.session import get_db
@@ -24,39 +24,64 @@ def create_task(task_in: TaskCreate, db: Session = Depends(get_db), current_user
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-@router.post("/ai-create", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/ai-create", response_model=Union[TaskResponse, List[TaskResponse]], status_code=status.HTTP_201_CREATED)
 def create_task_directly_with_ai(
     payload: AITaskPrompt,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
-    Direct autonomous task creation by Groq: parses instruction and builds the task directly in DB.
+    Direct autonomous task creation by Groq: parses instruction and builds the task(s) directly in DB.
+    Seamlessly handles single-task instructions as well as multi-task batch requests.
     """
     adapter = GroqAdapter()
-    plan = adapter.parse_task_prompt(payload.prompt)
+    plan_data = adapter.parse_task_prompt(payload.prompt)
 
-    # Transform parsed plan into TaskCreate schema with builder
-    blocks_in = []
-    for b in plan.get("work_blocks", []):
-        blocks_in.append(WorkBlockCreate(
-            day_name=b.get("day_name", "Lunes"),
-            start_time=b.get("start_time"),
-            end_time=b.get("end_time"),
-            notes=b.get("notes")
-        ))
+    # Normalize response to a list of individual task dictionaries
+    task_dicts = []
+    if isinstance(plan_data, list):
+        task_dicts = [item for item in plan_data if isinstance(item, dict)]
+    elif isinstance(plan_data, dict):
+        if "tasks" in plan_data and isinstance(plan_data["tasks"], list):
+            task_dicts = [item for item in plan_data["tasks"] if isinstance(item, dict)]
+        else:
+            task_dicts = [plan_data]
 
-    task_in = TaskCreate(
-        title=plan.get("title", "Tarea programada con IA"),
-        description=plan.get("description"),
-        deadline=plan.get("deadline"),
-        is_recurring=plan.get("is_recurring", False),
-        recurrence_rule=plan.get("recurrence_rule"),
-        work_blocks=blocks_in
-    )
+    if not task_dicts:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se pudo interpretar ninguna tarea a partir de la instrucción proporcionada."
+        )
 
     service = TaskService(db)
-    return service.create_task(current_user.id, task_in)
+    created_tasks = []
+
+    for item in task_dicts:
+        blocks_in = []
+        for b in item.get("work_blocks", []):
+            if isinstance(b, dict):
+                blocks_in.append(WorkBlockCreate(
+                    day_name=b.get("day_name", "Lunes"),
+                    start_time=b.get("start_time"),
+                    end_time=b.get("end_time"),
+                    notes=b.get("notes")
+                ))
+
+        task_in = TaskCreate(
+            title=item.get("title", "Tarea programada con IA"),
+            description=item.get("description"),
+            deadline=item.get("deadline"),
+            is_recurring=item.get("is_recurring", False),
+            recurrence_rule=item.get("recurrence_rule"),
+            color=item.get("color", "blue"),
+            work_blocks=blocks_in
+        )
+        created_task = service.create_task(current_user.id, task_in)
+        created_tasks.append(created_task)
+
+    if len(created_tasks) == 1:
+        return created_tasks[0]
+    return created_tasks
 
 @router.get("/{task_id}", response_model=TaskResponse)
 def get_task(task_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

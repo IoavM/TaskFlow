@@ -217,8 +217,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     if (!aiPrompt.trim()) return;
     try {
       setLoadingAI(true);
-      setError(null);
-      const plan = await api.parseTaskWithAI(aiPrompt);
+      const rawPlan: any = await api.parseTaskWithAI(aiPrompt);
+      const plan = Array.isArray(rawPlan)
+        ? rawPlan[0]
+        : (rawPlan && Array.isArray(rawPlan.tasks) ? rawPlan.tasks[0] : rawPlan);
+      if (!plan) return;
       if (plan.title) setTitle(plan.title);
       if (plan.description) setDescription(plan.description);
 

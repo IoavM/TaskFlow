@@ -347,8 +347,8 @@ export const api = {
     });
   },
 
-  async createTaskDirectlyWithAI(prompt: string): Promise<Task> {
-    return request<Task>('/tasks/ai-create', {
+  async createTaskDirectlyWithAI(prompt: string): Promise<Task | Task[]> {
+    return request<Task | Task[]>('/tasks/ai-create', {
       method: 'POST',
       body: JSON.stringify({ prompt }),
     });
