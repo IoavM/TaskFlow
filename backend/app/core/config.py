@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./taskflow.db"
     GEMINI_API_KEY: str = ""
     GROQ_API_KEY: str = ""
-    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_ID: str = "809547812717-qjoafrr77qjmrr7qimt9o8m7t9q9lqiq.apps.googleusercontent.com"
     GOOGLE_CLIENT_SECRET: str = ""
 
     class Config:

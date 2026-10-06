@@ -44,10 +44,15 @@ def google_login(data: GoogleLoginRequest, db: Session = Depends(get_db)):
         from google.auth.transport import requests as google_requests
         from app.core.config import settings
 
+        configured_client_id = (settings.GOOGLE_CLIENT_ID or "").strip()
+        default_client_id = "809547812717-qjoafrr77qjmrr7qimt9o8m7t9q9lqiq.apps.googleusercontent.com"
+        valid_audiences = [cid for cid in {configured_client_id, default_client_id} if cid]
+        target_audience = valid_audiences[0] if len(valid_audiences) == 1 else valid_audiences
+
         idinfo = id_token.verify_oauth2_token(
             data.credential,
             google_requests.Request(),
-            settings.GOOGLE_CLIENT_ID
+            audience=target_audience
         )
 
         email = idinfo.get("email")
