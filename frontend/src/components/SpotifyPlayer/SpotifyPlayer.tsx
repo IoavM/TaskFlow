@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Disc3, ChevronDown, ChevronUp, ExternalLink, Plus, Trash2, Music, Check, Sparkles, CheckCircle2, Loader2 } from 'lucide-react';
+import { Disc3, ChevronDown, ChevronUp, ExternalLink, Plus, Trash2, Music, Check, Sparkles } from 'lucide-react';
 import { UserPlaylist } from '../../types';
 import { api } from '../../services/api';
 import './SpotifyPlayer.css';
@@ -79,7 +79,6 @@ export const SpotifyPlayer: React.FC = () => {
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [newPlaylistUrl, setNewPlaylistUrl] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
-  const [syncStatus, setSyncStatus] = useState<'synced' | 'saving' | 'offline'>('synced');
 
   // 2. Synchronize with Cloud Account on Mount / Login
   useEffect(() => {
@@ -103,21 +102,17 @@ export const SpotifyPlayer: React.FC = () => {
             setActiveId(prefs.spotify_active_id);
             localStorage.setItem(getStorageActiveKey(user.id), prefs.spotify_active_id);
           }
-          setSyncStatus('synced');
         } else {
           // Cloud has no playlists yet; sync local cache UP to cloud account
           if (playlists.length > 0) {
-            setSyncStatus('saving');
             await api.updateUserPreferences({
               spotify_playlists: playlists,
               spotify_active_id: activeId,
             });
-            if (isMounted) setSyncStatus('synced');
           }
         }
       } catch (err) {
         console.warn('[SpotifyPlayer] Cloud sync offline or fallback to local cache:', err);
-        if (isMounted) setSyncStatus('offline');
       }
     };
 
@@ -148,15 +143,12 @@ export const SpotifyPlayer: React.FC = () => {
     // 2. Cloud sync if authenticated
     if (user) {
       try {
-        setSyncStatus('saving');
         await api.updateUserPreferences({
           spotify_playlists: updatedPlaylists,
           spotify_active_id: newActiveId,
         });
-        setSyncStatus('synced');
       } catch (err) {
         console.warn('[SpotifyPlayer] Could not persist to cloud backend:', err);
-        setSyncStatus('offline');
       }
     }
   }, []);
@@ -241,27 +233,9 @@ export const SpotifyPlayer: React.FC = () => {
             <Disc3 className="w-4 h-4 animate-spin-slow" />
           </div>
           <div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-slate-800 block leading-tight">
-                Spotify
-              </span>
-              {/* Cloud Sync Status Indicator */}
-              {syncStatus === 'saving' && (
-                <span className="inline-flex items-center text-[10px] text-amber-600 font-medium gap-0.5">
-                  <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                  <span>Guardando...</span>
-                </span>
-              )}
-              {syncStatus === 'synced' && (
-                <span
-                  className="inline-flex items-center text-[9px] text-emerald-600 font-medium gap-0.5 bg-emerald-50 px-1.5 py-0.2 rounded-full border border-emerald-200/60"
-                  title="Guardado en tu cuenta y caché (disponible cada vez que inicies sesión)"
-                >
-                  <CheckCircle2 className="w-2.5 h-2.5" />
-                  <span>En tu cuenta</span>
-                </span>
-              )}
-            </div>
+            <span className="text-xs font-bold text-slate-800 block leading-tight">
+              Spotify
+            </span>
             <span className="text-[10px] text-slate-500 font-medium">
               Tus Playlists ({playlists.length})
             </span>
@@ -277,10 +251,10 @@ export const SpotifyPlayer: React.FC = () => {
                 ? 'bg-[#1DB954] text-white shadow-xs shadow-emerald-500/30'
                 : 'bg-white/90 text-slate-700 border border-slate-200/90 shadow-2xs hover:bg-[#1DB954] hover:text-white hover:border-[#1DB954] hover:shadow-md hover:shadow-emerald-500/25 active:scale-95'
             }`}
-            title={showAddForm ? 'Cerrar formulario' : 'Añadir o pegar nueva playlist'}
+            title={showAddForm ? 'Cerrar formulario' : 'Añadir nueva playlist'}
           >
             <Plus className="w-3.5 h-3.5" />
-            <span className="text-[11px] font-semibold">Pegar Link</span>
+            <span className="text-[11px] font-semibold">Añadir Playlist</span>
           </button>
 
           <button
@@ -301,33 +275,33 @@ export const SpotifyPlayer: React.FC = () => {
             <form onSubmit={handleAddPlaylist} className="p-3 rounded-xl bg-white/95 border border-slate-200/90 shadow-xs space-y-2.5">
               <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
                 <Sparkles className="w-3.5 h-3.5 text-[#1DB954]" />
-                <span>Guardar playlist en tu cuenta</span>
+                <span>Guardar nueva playlist propia</span>
               </div>
 
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-0.5">
-                  Enlace de Spotify (URL o URI) <span className="text-red-500">*</span>
+                  Nombre de tu playlist
                 </label>
                 <input
                   type="text"
                   required
-                  autoFocus
-                  value={newPlaylistUrl}
-                  onChange={(e) => setNewPlaylistUrl(e.target.value)}
-                  placeholder="https://open.spotify.com/playlist/..."
+                  value={newPlaylistName}
+                  onChange={(e) => setNewPlaylistName(e.target.value)}
+                  placeholder="Ej: Mi Música de Estudio, Rock, Lofi..."
                   className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-200/80 bg-slate-50/50 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#1DB954] transition-all"
                 />
               </div>
 
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-0.5">
-                  Nombre (opcional)
+                  Enlace de Spotify (URL o URI)
                 </label>
                 <input
                   type="text"
-                  value={newPlaylistName}
-                  onChange={(e) => setNewPlaylistName(e.target.value)}
-                  placeholder="Ej: Para estudiar, Rock, Éxitos..."
+                  required
+                  value={newPlaylistUrl}
+                  onChange={(e) => setNewPlaylistUrl(e.target.value)}
+                  placeholder="https://open.spotify.com/playlist/..."
                   className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-200/80 bg-slate-50/50 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#1DB954] transition-all"
                 />
               </div>
@@ -336,27 +310,24 @@ export const SpotifyPlayer: React.FC = () => {
                 <p className="text-[10px] text-red-600 leading-tight">{formError}</p>
               )}
 
-              <div className="flex items-center justify-between pt-1">
-                <span className="text-[9px] text-slate-400">Se guardará automáticamente en tu perfil</span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAddForm(false);
-                      setFormError(null);
-                    }}
-                    className="px-2.5 py-1 text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-3 py-1 bg-[#1DB954] hover:bg-[#1aa34a] text-white text-xs font-semibold rounded-lg transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    <span>Guardar</span>
-                  </button>
-                </div>
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddForm(false);
+                    setFormError(null);
+                  }}
+                  className="px-2.5 py-1 text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-3 py-1 bg-[#1DB954] hover:bg-[#1aa34a] text-white text-xs font-semibold rounded-lg transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Guardar</span>
+                </button>
               </div>
             </form>
           )}
