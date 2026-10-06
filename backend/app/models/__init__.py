@@ -1,5 +1,6 @@
-from app.models.user import User
-from app.models.task import Task
-from app.models.work_block import WorkBlock
+from .user import User
+from .task import Task
+from .work_block import WorkBlock
+from .user_preference import UserPreference
 
-__all__ = ["User", "Task", "WorkBlock"]
+__all__ = ["User", "Task", "WorkBlock", "UserPreference"]

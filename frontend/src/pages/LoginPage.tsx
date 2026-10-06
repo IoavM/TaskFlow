@@ -37,6 +37,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               if (mode === 'register') onNavigateRegister();
             }}
             onSubmit={handleLogin}
+            onGoogleSuccess={onLoginSuccess}
           />
         </div>
       </div>

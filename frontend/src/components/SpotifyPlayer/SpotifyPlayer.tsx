@@ -1,13 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Disc3, ChevronDown, ChevronUp, ExternalLink, Plus, Trash2, Music, Check, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Disc3, ChevronDown, ChevronUp, ExternalLink, Plus, Trash2, Music, Check, Sparkles, CheckCircle2, Loader2 } from 'lucide-react';
+import { UserPlaylist } from '../../types';
+import { api } from '../../services/api';
 import './SpotifyPlayer.css';
 
-export interface UserPlaylist {
-  id: string;
-  name: string;
-  url: string;
-  embedUrl: string;
-}
+export type { UserPlaylist };
 
 const DEFAULT_PLAYLISTS: UserPlaylist[] = [
   {
@@ -30,18 +27,32 @@ const DEFAULT_PLAYLISTS: UserPlaylist[] = [
   },
 ];
 
-const STORAGE_PLAYLISTS_KEY = 'taskflow_user_playlists';
-const STORAGE_ACTIVE_KEY = 'taskflow_active_playlist_id';
+const LEGACY_STORAGE_PLAYLISTS_KEY = 'taskflow_user_playlists';
+const LEGACY_STORAGE_ACTIVE_KEY = 'taskflow_active_playlist_id';
+
+const getStoragePlaylistsKey = (userId?: number) =>
+  userId ? `taskflow_spotify_playlists_user_${userId}` : LEGACY_STORAGE_PLAYLISTS_KEY;
+
+const getStorageActiveKey = (userId?: number) =>
+  userId ? `taskflow_spotify_active_user_${userId}` : LEGACY_STORAGE_ACTIVE_KEY;
 
 export const SpotifyPlayer: React.FC = () => {
+  const currentUser = api.getCurrentStoredUser();
+
+  // 1. Instant Cache-First Load
   const [playlists, setPlaylists] = useState<UserPlaylist[]>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_PLAYLISTS_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
+      const userKey = getStoragePlaylistsKey(currentUser?.id);
+      const savedUser = localStorage.getItem(userKey);
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      // Fallback to legacy key
+      const legacy = localStorage.getItem(LEGACY_STORAGE_PLAYLISTS_KEY);
+      if (legacy) {
+        const parsedLegacy = JSON.parse(legacy);
+        if (Array.isArray(parsedLegacy) && parsedLegacy.length > 0) return parsedLegacy;
       }
     } catch {
       // Fallback
@@ -50,8 +61,17 @@ export const SpotifyPlayer: React.FC = () => {
   });
 
   const [activeId, setActiveId] = useState<string>(() => {
-    const savedId = localStorage.getItem(STORAGE_ACTIVE_KEY);
-    return savedId || DEFAULT_PLAYLISTS[0].id;
+    try {
+      const userActiveKey = getStorageActiveKey(currentUser?.id);
+      const savedActive = localStorage.getItem(userActiveKey);
+      if (savedActive) return savedActive;
+
+      const legacyActive = localStorage.getItem(LEGACY_STORAGE_ACTIVE_KEY);
+      if (legacyActive) return legacyActive;
+    } catch {
+      // Fallback
+    }
+    return DEFAULT_PLAYLISTS[0].id;
   });
 
   const [isExpanded, setIsExpanded] = useState(true);
@@ -59,20 +79,87 @@ export const SpotifyPlayer: React.FC = () => {
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [newPlaylistUrl, setNewPlaylistUrl] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'saving' | 'offline'>('synced');
 
-  // Sync playlists to localStorage
+  // 2. Synchronize with Cloud Account on Mount / Login
   useEffect(() => {
+    const user = api.getCurrentStoredUser();
+    if (!user) return;
+
+    let isMounted = true;
+
+    const syncWithBackend = async () => {
+      try {
+        const prefs = await api.getUserPreferences();
+        if (!isMounted) return;
+
+        if (prefs && prefs.spotify_playlists && prefs.spotify_playlists.length > 0) {
+          // Cloud has saved playlists, sync down to state and cache
+          setPlaylists(prefs.spotify_playlists);
+          const userKey = getStoragePlaylistsKey(user.id);
+          localStorage.setItem(userKey, JSON.stringify(prefs.spotify_playlists));
+
+          if (prefs.spotify_active_id) {
+            setActiveId(prefs.spotify_active_id);
+            localStorage.setItem(getStorageActiveKey(user.id), prefs.spotify_active_id);
+          }
+          setSyncStatus('synced');
+        } else {
+          // Cloud has no playlists yet; sync local cache UP to cloud account
+          if (playlists.length > 0) {
+            setSyncStatus('saving');
+            await api.updateUserPreferences({
+              spotify_playlists: playlists,
+              spotify_active_id: activeId,
+            });
+            if (isMounted) setSyncStatus('synced');
+          }
+        }
+      } catch (err) {
+        console.warn('[SpotifyPlayer] Cloud sync offline or fallback to local cache:', err);
+        if (isMounted) setSyncStatus('offline');
+      }
+    };
+
+    syncWithBackend();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Helper to persist to both user-scoped localStorage and cloud backend
+  const persistChanges = useCallback(async (updatedPlaylists: UserPlaylist[], newActiveId: string) => {
+    const user = api.getCurrentStoredUser();
+    const playlistsKey = getStoragePlaylistsKey(user?.id);
+    const activeKey = getStorageActiveKey(user?.id);
+
+    // 1. Instant local cache update
     try {
-      localStorage.setItem(STORAGE_PLAYLISTS_KEY, JSON.stringify(playlists));
+      localStorage.setItem(playlistsKey, JSON.stringify(updatedPlaylists));
+      localStorage.setItem(activeKey, newActiveId);
+      // Also update legacy keys as fallback
+      localStorage.setItem(LEGACY_STORAGE_PLAYLISTS_KEY, JSON.stringify(updatedPlaylists));
+      localStorage.setItem(LEGACY_STORAGE_ACTIVE_KEY, newActiveId);
     } catch (e) {
-      console.error('Error saving playlists to localStorage', e);
+      console.error('Error saving to localStorage', e);
     }
-  }, [playlists]);
 
-  // Sync activeId to localStorage
-  useEffect(() => {
-    localStorage.setItem(STORAGE_ACTIVE_KEY, activeId);
-  }, [activeId]);
+    // 2. Cloud sync if authenticated
+    if (user) {
+      try {
+        setSyncStatus('saving');
+        await api.updateUserPreferences({
+          spotify_playlists: updatedPlaylists,
+          spotify_active_id: newActiveId,
+        });
+        setSyncStatus('synced');
+      } catch (err) {
+        console.warn('[SpotifyPlayer] Could not persist to cloud backend:', err);
+        setSyncStatus('offline');
+      }
+    }
+  }, []);
 
   const parseSpotifyUrl = (url: string): { type: string; id: string } | null => {
     const clean = url.trim();
@@ -83,20 +170,13 @@ export const SpotifyPlayer: React.FC = () => {
     return null;
   };
 
-  const handleAddPlaylist = (e: React.FormEvent) => {
+  const handleAddPlaylist = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
 
-    const name = newPlaylistName.trim();
     const url = newPlaylistUrl.trim();
-
-    if (!name) {
-      setFormError('Por favor asigna un nombre a la playlist');
-      return;
-    }
-
     if (!url) {
-      setFormError('Por favor pega el enlace de tu playlist de Spotify');
+      setFormError('Por favor pega el enlace de tu playlist o canción de Spotify');
       return;
     }
 
@@ -105,6 +185,11 @@ export const SpotifyPlayer: React.FC = () => {
       setFormError('Enlace inválido. Pega un link de Spotify (ej: https://open.spotify.com/playlist/...)');
       return;
     }
+
+    // Friendly default name if user leaves it blank
+    const typeLabel =
+      parsed.type === 'playlist' ? 'Mi Playlist' : parsed.type === 'album' ? 'Mi Álbum' : 'Mi Música';
+    const name = newPlaylistName.trim() || `${typeLabel} #${playlists.length + 1}`;
 
     const embedUrl = `https://open.spotify.com/embed/${parsed.type}/${parsed.id}?utm_source=generator&theme=0`;
     const newPlaylist: UserPlaylist = {
@@ -120,9 +205,16 @@ export const SpotifyPlayer: React.FC = () => {
     setNewPlaylistName('');
     setNewPlaylistUrl('');
     setShowAddForm(false);
+
+    await persistChanges(updated, newPlaylist.id);
   };
 
-  const handleDeletePlaylist = (idToDelete: string, e: React.MouseEvent) => {
+  const handleSelectPlaylist = async (id: string) => {
+    setActiveId(id);
+    await persistChanges(playlists, id);
+  };
+
+  const handleDeletePlaylist = async (idToDelete: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (playlists.length <= 1) {
       alert('Debes mantener al menos una playlist guardada.');
@@ -130,10 +222,12 @@ export const SpotifyPlayer: React.FC = () => {
     }
 
     const updated = playlists.filter((p) => p.id !== idToDelete);
+    const nextActiveId = activeId === idToDelete && updated.length > 0 ? updated[0].id : activeId;
+
     setPlaylists(updated);
-    if (activeId === idToDelete && updated.length > 0) {
-      setActiveId(updated[0].id);
-    }
+    setActiveId(nextActiveId);
+
+    await persistChanges(updated, nextActiveId);
   };
 
   const activePlaylist = playlists.find((p) => p.id === activeId) || playlists[0] || DEFAULT_PLAYLISTS[0];
@@ -147,9 +241,27 @@ export const SpotifyPlayer: React.FC = () => {
             <Disc3 className="w-4 h-4 animate-spin-slow" />
           </div>
           <div>
-            <span className="text-xs font-bold text-slate-800 block leading-tight">
-              Spotify
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-slate-800 block leading-tight">
+                Spotify
+              </span>
+              {/* Cloud Sync Status Indicator */}
+              {syncStatus === 'saving' && (
+                <span className="inline-flex items-center text-[10px] text-amber-600 font-medium gap-0.5">
+                  <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                  <span>Guardando...</span>
+                </span>
+              )}
+              {syncStatus === 'synced' && (
+                <span
+                  className="inline-flex items-center text-[9px] text-emerald-600 font-medium gap-0.5 bg-emerald-50 px-1.5 py-0.2 rounded-full border border-emerald-200/60"
+                  title="Guardado en tu cuenta y caché (disponible cada vez que inicies sesión)"
+                >
+                  <CheckCircle2 className="w-2.5 h-2.5" />
+                  <span>En tu cuenta</span>
+                </span>
+              )}
+            </div>
             <span className="text-[10px] text-slate-500 font-medium">
               Tus Playlists ({playlists.length})
             </span>
@@ -165,10 +277,10 @@ export const SpotifyPlayer: React.FC = () => {
                 ? 'bg-[#1DB954] text-white shadow-xs shadow-emerald-500/30'
                 : 'bg-white/90 text-slate-700 border border-slate-200/90 shadow-2xs hover:bg-[#1DB954] hover:text-white hover:border-[#1DB954] hover:shadow-md hover:shadow-emerald-500/25 active:scale-95'
             }`}
-            title={showAddForm ? 'Cerrar formulario' : 'Añadir nueva playlist'}
+            title={showAddForm ? 'Cerrar formulario' : 'Añadir o pegar nueva playlist'}
           >
             <Plus className="w-3.5 h-3.5" />
-            <span className="text-[11px] font-semibold">Añadir</span>
+            <span className="text-[11px] font-semibold">Pegar Link</span>
           </button>
 
           <button
@@ -189,33 +301,33 @@ export const SpotifyPlayer: React.FC = () => {
             <form onSubmit={handleAddPlaylist} className="p-3 rounded-xl bg-white/95 border border-slate-200/90 shadow-xs space-y-2.5">
               <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
                 <Sparkles className="w-3.5 h-3.5 text-[#1DB954]" />
-                <span>Guardar nueva playlist propia</span>
+                <span>Guardar playlist en tu cuenta</span>
               </div>
 
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-0.5">
-                  Nombre de tu playlist
+                  Enlace de Spotify (URL o URI) <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
-                  value={newPlaylistName}
-                  onChange={(e) => setNewPlaylistName(e.target.value)}
-                  placeholder="Ej: Mi Música de Estudio, Rock, Lofi..."
+                  autoFocus
+                  value={newPlaylistUrl}
+                  onChange={(e) => setNewPlaylistUrl(e.target.value)}
+                  placeholder="https://open.spotify.com/playlist/..."
                   className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-200/80 bg-slate-50/50 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#1DB954] transition-all"
                 />
               </div>
 
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-0.5">
-                  Enlace de Spotify (URL o URI)
+                  Nombre (opcional)
                 </label>
                 <input
                   type="text"
-                  required
-                  value={newPlaylistUrl}
-                  onChange={(e) => setNewPlaylistUrl(e.target.value)}
-                  placeholder="https://open.spotify.com/playlist/..."
+                  value={newPlaylistName}
+                  onChange={(e) => setNewPlaylistName(e.target.value)}
+                  placeholder="Ej: Para estudiar, Rock, Éxitos..."
                   className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-200/80 bg-slate-50/50 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#1DB954] transition-all"
                 />
               </div>
@@ -224,24 +336,27 @@ export const SpotifyPlayer: React.FC = () => {
                 <p className="text-[10px] text-red-600 leading-tight">{formError}</p>
               )}
 
-              <div className="flex items-center justify-end gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddForm(false);
-                    setFormError(null);
-                  }}
-                  className="px-2.5 py-1 text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-3 py-1 bg-[#1DB954] hover:bg-[#1aa34a] text-white text-xs font-semibold rounded-lg transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
-                >
-                  <Check className="w-3.5 h-3.5" />
-                  <span>Guardar</span>
-                </button>
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[9px] text-slate-400">Se guardará automáticamente en tu perfil</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddForm(false);
+                      setFormError(null);
+                    }}
+                    className="px-2.5 py-1 text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-3 py-1 bg-[#1DB954] hover:bg-[#1aa34a] text-white text-xs font-semibold rounded-lg transition-all shadow-2xs flex items-center gap-1 cursor-pointer"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Guardar</span>
+                  </button>
+                </div>
               </div>
             </form>
           )}
@@ -252,9 +367,9 @@ export const SpotifyPlayer: React.FC = () => {
               <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                 Selecciona tu playlist
               </span>
-              <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span>{activePlaylist.name}</span>
+              <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1 truncate max-w-[180px]">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span className="truncate">{activePlaylist.name}</span>
               </span>
             </div>
 
@@ -264,7 +379,7 @@ export const SpotifyPlayer: React.FC = () => {
                 return (
                   <div
                     key={p.id}
-                    onClick={() => setActiveId(p.id)}
+                    onClick={() => handleSelectPlaylist(p.id)}
                     className={`group px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center justify-between cursor-pointer border ${
                       isActive
                         ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
@@ -304,13 +419,20 @@ export const SpotifyPlayer: React.FC = () => {
           {/* Official Spotify Embed Player */}
           <div className="spotify-embed-container rounded-xl overflow-hidden shadow-sm border border-slate-200/80 bg-black">
             <iframe
+              key={activePlaylist.id}
               title={`Spotify Player - ${activePlaylist.name}`}
-              src={activePlaylist.embedUrl}
+              src={
+                activePlaylist.embedUrl && activePlaylist.embedUrl.includes('open.spotify.com/embed/')
+                  ? activePlaylist.embedUrl
+                  : (parseSpotifyUrl(activePlaylist.url)
+                      ? `https://open.spotify.com/embed/${parseSpotifyUrl(activePlaylist.url)!.type}/${parseSpotifyUrl(activePlaylist.url)!.id}?utm_source=generator&theme=0`
+                      : DEFAULT_PLAYLISTS[0].embedUrl)
+              }
               width="100%"
               height="352"
               frameBorder="0"
               allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-              loading="lazy"
+              loading="eager"
               className="rounded-xl w-full"
             />
           </div>

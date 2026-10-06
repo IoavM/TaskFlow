@@ -1,4 +1,4 @@
-import { AuthResponse, Task, TaskCreateInput, AIParsedPlan, User } from '../types';
+import { AuthResponse, Task, TaskCreateInput, AIParsedPlan, User, UserPreferences } from '../types';
 
 // ─── Custom Error ──────────────────────────────────────────────────
 export class ApiError extends Error {
@@ -279,6 +279,17 @@ export const api = {
     return data;
   },
 
+  async loginWithGoogle(credential: string): Promise<AuthResponse> {
+    const data = await request<AuthResponse>('/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ credential }),
+      _retry: AUTH_RETRY,
+    });
+    localStorage.setItem('taskflow_token', data.access_token);
+    localStorage.setItem('taskflow_user', JSON.stringify(data.user));
+    return data;
+  },
+
   logout(): void {
     localStorage.removeItem('taskflow_token');
     localStorage.removeItem('taskflow_user');
@@ -340,6 +351,18 @@ export const api = {
     return request<Task>('/tasks/ai-create', {
       method: 'POST',
       body: JSON.stringify({ prompt }),
+    });
+  },
+
+  // User Preferences (Spotify & Cloud Sync)
+  async getUserPreferences(): Promise<UserPreferences> {
+    return request<UserPreferences>('/user/preferences');
+  },
+
+  async updateUserPreferences(data: UserPreferences): Promise<UserPreferences> {
+    return request<UserPreferences>('/user/preferences', {
+      method: 'PUT',
+      body: JSON.stringify(data),
     });
   },
 };

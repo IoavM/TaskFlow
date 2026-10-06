@@ -67,3 +67,16 @@ export interface AIParsedPlan {
   recurrence_rule?: string;
   work_blocks: WorkBlockInput[];
 }
+
+export interface UserPlaylist {
+  id: string;
+  name: string;
+  url: string;
+  embedUrl: string;
+}
+
+export interface UserPreferences {
+  spotify_playlists?: UserPlaylist[] | null;
+  spotify_active_id?: string | null;
+}
+

@@ -64,6 +64,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({
               if (mode === 'login') onNavigateLogin();
             }}
             onSubmit={(data) => handleOpenTerms(data)}
+            onGoogleSuccess={onRegisterSuccess}
           />
         </div>
       </div>

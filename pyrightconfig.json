@@ -1,0 +1,15 @@
+{
+  "include": [
+    "backend"
+  ],
+  "extraPaths": [
+    "backend",
+    "./backend"
+  ],
+  "venvPath": "backend",
+  "venv": ".venv",
+  "typeCheckingMode": "off",
+  "reportMissingImports": "none",
+  "reportMissingTypeStubs": "none",
+  "reportMissingModuleSource": "none"
+}

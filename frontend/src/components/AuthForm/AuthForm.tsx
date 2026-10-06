@@ -1,19 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Eye, EyeOff, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import authConfig from './AuthForm.json';
 import { useToast } from '../../context/ToastContext';
+import { api } from '../../services/api';
 import './AuthForm.css';
+
+declare global {
+  interface Window {
+    google?: any;
+  }
+}
 
 interface AuthFormProps {
   mode: 'login' | 'register';
   onSwitchMode: (mode: 'login' | 'register') => void;
   onSubmit: (formData: Record<string, string>) => Promise<void> | void;
+  onGoogleSuccess?: () => void;
 }
 
 export const AuthForm: React.FC<AuthFormProps> = ({
   mode,
   onSwitchMode,
   onSubmit,
+  onGoogleSuccess,
 }) => {
   const config = authConfig[mode];
   const { toast } = useToast();
@@ -25,6 +34,63 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const googleBtnRef = useRef<HTMLDivElement>(null);
+
+  // Initialize and Render Official Google Sign-In Button
+  useEffect(() => {
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+
+    const handleGoogleResponse = async (response: any) => {
+      if (!response?.credential) return;
+      try {
+        setLoading(true);
+        setErrorMessage(null);
+        await api.loginWithGoogle(response.credential);
+        toast.success(mode === 'register' ? '¡Cuenta creada con Google!' : '¡Bienvenido a TaskFlow!');
+        if (onGoogleSuccess) {
+          onGoogleSuccess();
+        }
+      } catch (err: any) {
+        setErrorMessage(err.message || 'Error al autenticar con Google');
+        toast.error(err.message || 'Error al autenticar con Google');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const renderGoogleBtn = () => {
+      if (window.google?.accounts?.id && googleBtnRef.current) {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleGoogleResponse,
+        });
+
+        googleBtnRef.current.innerHTML = '';
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          type: 'standard',
+          theme: 'outline',
+          size: 'large',
+          text: mode === 'login' ? 'signin_with' : 'signup_with',
+          shape: 'rectangular',
+          logo_alignment: 'left',
+          width: 320,
+          locale: 'es',
+        });
+      }
+    };
+
+    if (window.google?.accounts?.id) {
+      renderGoogleBtn();
+    } else {
+      const interval = setInterval(() => {
+        if (window.google?.accounts?.id) {
+          clearInterval(interval);
+          renderGoogleBtn();
+        }
+      }, 150);
+      return () => clearInterval(interval);
+    }
+  }, [mode, onGoogleSuccess, toast]);
 
   const handleInputChange = (fieldId: string, value: string) => {
     setFormData((prev) => ({ ...prev, [fieldId]: value }));
@@ -63,8 +129,20 @@ export const AuthForm: React.FC<AuthFormProps> = ({
         </div>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-5">
         <h2 className="text-xl font-semibold text-[#0F172A]">{config.title}</h2>
+      </div>
+
+      {/* Google Sign In Container */}
+      <div className="space-y-3 mb-4">
+        <div ref={googleBtnRef} className="w-full flex justify-center min-h-[44px]" />
+
+        <div className="relative flex items-center justify-center my-3">
+          <div className="border-t border-slate-200/90 w-full" />
+          <span className="bg-white px-2.5 text-[10px] uppercase font-bold tracking-wider text-slate-400 absolute">
+            o con tu correo
+          </span>
+        </div>
       </div>
 
       {errorMessage && (
@@ -108,7 +186,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           <div className="flex justify-end pt-1">
             <button
               type="button"
-              onClick={() => toast.info('Para restablecer tu contraseña, contacta al soporte de TaskFlow o regístrate con un nuevo correo.', 'Restablecer contraseña')}
+              onClick={() => toast.info('Para restablecer tu contraseña, contacta al soporte de TaskFlow o inicia sesión con Google.', 'Restablecer contraseña')}
               className="text-xs text-[#0052FF] font-medium hover:underline hover:opacity-90"
             >
               {(config as any).forgotPassword}
