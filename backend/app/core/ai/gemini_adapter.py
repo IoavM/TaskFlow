@@ -6,7 +6,7 @@ from app.core.ai.ai_port import AITaskPlannerPort
 from app.core.config import settings
 
 class GeminiAdapter(AITaskPlannerPort):
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: str | None = None):
         self.api_key = api_key or settings.GEMINI_API_KEY
         self.client = None
         if self.api_key:

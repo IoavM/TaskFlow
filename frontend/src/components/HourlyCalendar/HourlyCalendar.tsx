@@ -85,7 +85,12 @@ export const HourlyCalendar: React.FC<HourlyCalendarProps> = ({
         if (t.deadline) {
           const endD = parseDateLocal(t.deadline);
           endD.setHours(23, 59, 59, 999);
-          if (columnDate > endD) {
+          // Only expire if explicitly user-bounded and not standard indefinite weekly/daily habit
+          if (
+            t.recurrence_rule !== 'semanal' &&
+            t.recurrence_rule !== 'diaria' &&
+            columnDate > endD
+          ) {
             return; // Recurrence has expired
           }
         }
@@ -95,7 +100,7 @@ export const HourlyCalendar: React.FC<HourlyCalendarProps> = ({
           if (t.deadline) {
             taskDayNum = parseDateLocal(t.deadline).getDate();
           } else if (t.created_at) {
-            taskDayNum = new Date(t.created_at).getDate();
+            taskDayNum = new Date(t.created_at.replace(' ', 'T')).getDate();
           }
           if (columnDate.getDate() === taskDayNum) {
             const blk = t.work_blocks[0] || {
@@ -122,86 +127,77 @@ export const HourlyCalendar: React.FC<HourlyCalendarProps> = ({
       }
 
       // 2. Single Task (Unique / Non-recurring)
-      const hasWorkBlocksWithWorkPrefix = t.work_blocks.some((b) =>
-        b.notes?.toLowerCase().startsWith('trabajo:')
-      );
-
-      if (hasWorkBlocksWithWorkPrefix) {
-        let deadlineEnd: Date | null = null;
-        let dl: Date | null = null;
-        if (t.deadline) {
-          dl = parseDateLocal(t.deadline);
-          if (!isNaN(dl.getTime())) {
-            deadlineEnd = new Date(dl);
-            deadlineEnd.setHours(23, 59, 59, 999);
-          }
-        }
-
-        const allowWorkBlock = !deadlineEnd || columnDate <= deadlineEnd;
-        if (allowWorkBlock) {
-          t.work_blocks.forEach((b) => {
-            const bNorm = b.day_name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-            if (bNorm === dayNameNorm) {
+      let matchedWorkBlock = false;
+      if (t.work_blocks && t.work_blocks.length > 0) {
+        t.work_blocks.forEach((b) => {
+          if (b.block_date) {
+            if (isSameDay(columnDate, parseDateLocal(b.block_date))) {
               list.push({ task: t, block: b });
+              matchedWorkBlock = true;
             }
-          });
-        }
+            return;
+          }
+          const bNorm = b.day_name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+          if (bNorm === dayNameNorm || bNorm === 'todos') {
+            list.push({ task: t, block: b });
+            matchedWorkBlock = true;
+          }
+        });
+      }
 
-        // Display delivery block on deadline day
-        if (dl && isSameDay(columnDate, dl)) {
+      // Display delivery block on deadline day
+      if (t.deadline) {
+        const dl = parseDateLocal(t.deadline);
+        if (!isNaN(dl.getTime()) && isSameDay(columnDate, dl)) {
           const pad = (n: number) => n.toString().padStart(2, '0');
           const startH = dl.getHours();
           const startM = dl.getMinutes();
           const endH = (startH + 1) % 24;
-          list.push({
-            task: t,
-            block: {
-              id: t.id * 1000 + 99,
-              task_id: t.id,
-              day_name: dayKey,
-              start_time: `${pad(startH)}:${pad(startM)}`,
-              end_time: `${pad(endH)}:${pad(startM)}`,
-              notes: `Entrega: ${t.title}`,
-              completed: t.status === 'completed',
-            },
-          });
-        }
-        return;
-      }
+          const dlTime = `${pad(startH)}:${pad(startM)}`;
 
-      // 3. Single Task (Unique / Non-recurring) -> Appears ONLY on its specific date
-      if (t.deadline) {
-        const d = parseDateLocal(t.deadline);
-        if (!isNaN(d.getTime()) && isSameDay(columnDate, d)) {
-          if (t.work_blocks.length > 0) {
-            t.work_blocks.forEach((b) => list.push({ task: t, block: b }));
-          } else {
-            // Synthesize block from deadline time if no work block exists
-            const pad = (n: number) => n.toString().padStart(2, '0');
-            const startH = d.getHours();
-            const startM = d.getMinutes();
-            const endH = (startH + 1) % 24;
-            const blk: WorkBlock = {
-              id: t.id * 1000,
-              task_id: t.id,
-              day_name: dayKey,
-              start_time: `${pad(startH)}:${pad(startM)}`,
-              end_time: `${pad(endH)}:${pad(startM)}`,
-              completed: t.status === 'completed',
-            };
-            list.push({ task: t, block: blk });
+          const hasExactBlock = t.work_blocks?.some((b) => {
+            const bNorm = b.day_name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            return (bNorm === dayNameNorm || bNorm === 'todos') && b.start_time === dlTime;
+          });
+
+          if (!hasExactBlock) {
+            list.push({
+              task: t,
+              block: {
+                id: t.id * 1000 + 99,
+                task_id: t.id,
+                day_name: dayKey,
+                start_time: dlTime,
+                end_time: `${pad(endH)}:${pad(startM)}`,
+                notes: `Entrega: ${t.title}`,
+                completed: t.status === 'completed',
+              },
+            });
           }
           return;
         }
       }
 
-      // Single task without explicit deadline date: check matching day name in work blocks
-      t.work_blocks.forEach((b) => {
-        const bNorm = b.day_name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-        if (bNorm === dayNameNorm) {
-          list.push({ task: t, block: b });
+      if (matchedWorkBlock) {
+        return;
+      }
+
+      // Fallback for single tasks with no deadline and no work blocks
+      if (t.created_at && (!t.work_blocks || t.work_blocks.length === 0)) {
+        const cd = new Date(t.created_at.replace(' ', 'T'));
+        if (!isNaN(cd.getTime()) && isSameDay(columnDate, cd)) {
+          const blk: WorkBlock = {
+            id: t.id * 1000,
+            task_id: t.id,
+            day_name: dayKey,
+            start_time: '12:00',
+            end_time: '13:00',
+            notes: t.title,
+            completed: t.status === 'completed',
+          };
+          list.push({ task: t, block: blk });
         }
-      });
+      }
     });
 
     return list;
@@ -300,7 +296,9 @@ export const HourlyCalendar: React.FC<HourlyCalendarProps> = ({
                             <Repeat className="w-3 h-3 text-white/90 shrink-0" />
                           )}
                           <span className="text-xs font-bold truncate leading-tight">
-                            {block.notes || task.title}
+                            {block.notes && !['sesión programada', 'sesion programada', 'horario programado'].includes(block.notes.toLowerCase().trim())
+                              ? block.notes
+                              : task.title}
                           </span>
                         </div>
                         {block.id < 10000 && (

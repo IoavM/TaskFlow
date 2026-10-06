@@ -12,7 +12,7 @@ class GroqAdapter(AITaskPlannerPort):
         "qwen/qwen3.8-27b"
     ]
 
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: str | None = None):
         self.api_key = api_key or settings.GROQ_API_KEY
         self.client = None
         if self.api_key:
@@ -36,11 +36,11 @@ class GroqAdapter(AITaskPlannerPort):
                         "{\n"
                         '  "title": "Nombre conciso y natural de la tarea (ej: \'Fútbol\', \'Examen de Matemáticas\')",\n'
                         '  "description": "Descripción clara de la actividad",\n'
-                        '  "deadline": "YYYY-MM-DDTHH:MM:SS",\n'
+                        '  "deadline": "YYYY-MM-DDTHH:MM:SS" (o null si es un hábito recurrente sin fecha fin),\n'
                         '  "is_recurring": true/false,\n'
                         '  "recurrence_rule": "semanal" o null,\n'
                         '  "work_blocks": [\n'
-                        '    {"day_name": "Miércoles", "start_time": "14:00", "end_time": "16:00", "notes": "Sesión programada"}\n'
+                        '    {"day_name": "Miércoles", "start_time": "14:00", "end_time": "16:00", "notes": "Nombre de la tarea"}\n'
                         '  ]\n'
                         "}\n\n"
                         "- Si el usuario pide DOS O MÁS TAREAS DIFERENTES (ej: 'dos tareas para el miércoles, una de matemáticas y otra de historia'), responde con un objeto JSON con la clave 'tasks' que contenga una lista de tareas, o un arreglo JSON de tareas:\n"
@@ -57,7 +57,8 @@ class GroqAdapter(AITaskPlannerPort):
                         "3. DÍAS VÁLIDOS: 'day_name' DEBE ser exactamente uno de: 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo' (con tildes y mayúscula inicial).\n"
                         "4. CERO DÍAS FANTASMAS: Si el usuario dice 'martes y juves', genera bloques ÚNICAMENTE para Martes y Jueves. NUNCA agregues sesiones de preparación en Lunes ni Miércoles ni ningún otro día no solicitado.\n"
                         "5. HORAS: Formato 24 horas HH:MM (ej: '2 a 4 pm' -> '14:00' a '16:00').\n"
-                        "6. RECURRENCIA: Si se mencionan días de la semana fijos ('martes y jueves', 'todos los viernes', 'lunes a viernes'), marca 'is_recurring': true y 'recurrence_rule': 'semanal'. Si es un día único con fecha específica, 'is_recurring': false y 'recurrence_rule': null."
+                        "6. RECURRENCIA: Si se mencionan días de la semana fijos repetitivos ('martes y jueves', 'todos los viernes', 'lunes a viernes'), marca 'is_recurring': true, 'recurrence_rule': 'semanal' y 'deadline': null. Si es un día o fecha única puntual, calcula la fecha exacta ISO según la fecha de referencia y marca 'is_recurring': false y 'recurrence_rule': null.\n"
+                        "7. NOTAS DE BLOQUE: En cada bloque de 'work_blocks', asigna a 'notes' el nombre de la tarea en sí, nunca textos genéricos vacíos."
                     )
 
                     response = self.client.chat.completions.create(
@@ -162,15 +163,16 @@ class GroqAdapter(AITaskPlannerPort):
         if not cleaned_title or len(cleaned_title) < 2:
             cleaned_title = "Actividad Planificada"
 
-        blocks = [{"day_name": d, "start_time": start_t, "end_time": end_t, "notes": f"Sesión de {cleaned_title}"} for d in detected_days]
+        blocks = [{"day_name": d, "start_time": start_t, "end_time": end_t, "notes": cleaned_title} for d in detected_days]
         today = datetime.now()
+        is_rec = len(detected_days) > 1 or "cada" in p_lower or "semana" in p_lower
         target_deadline = today + timedelta(days=7 if len(detected_days) > 1 else 3)
 
         return {
             "title": cleaned_title,
             "description": f"Plan organizado para {cleaned_title}",
-            "deadline": target_deadline.isoformat(),
-            "is_recurring": len(detected_days) > 1 or "cada" in p_lower or "semana" in p_lower,
-            "recurrence_rule": "semanal" if (len(detected_days) > 1 or "semana" in p_lower) else None,
+            "deadline": None if is_rec else target_deadline.isoformat(),
+            "is_recurring": is_rec,
+            "recurrence_rule": "semanal" if is_rec else None,
             "work_blocks": blocks
         }

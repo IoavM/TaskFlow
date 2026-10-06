@@ -105,13 +105,33 @@ export const Schedule: React.FC<ScheduleProps> = ({
     const items: ScheduleDayItem[] = [];
     const dayNameNorm = dayKey.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
+    // Helper to get clean, descriptive title for work block
+    const getBlockTitle = (task: Task, b?: WorkBlock) => {
+      if (!b?.notes) return task.title;
+      const nLower = b.notes.toLowerCase().trim();
+      if (
+        nLower === 'sesión programada' ||
+        nLower === 'sesion programada' ||
+        nLower === 'horario programado' ||
+        nLower === ''
+      ) {
+        return task.title;
+      }
+      return b.notes;
+    };
+
     tasks.forEach((task) => {
-      // 1. Recurring task -> Appears only on the specific days selected by user, up to deadline if set
+      // 1. Recurring task -> Appears on user's selected days in work_blocks
       if (task.is_recurring) {
         if (task.deadline) {
           const endD = parseDateLocal(task.deadline);
           endD.setHours(23, 59, 59, 999);
-          if (columnDate > endD) {
+          // Only expire if explicitly user-bounded and not standard indefinite weekly/daily habit
+          if (
+            task.recurrence_rule !== 'semanal' &&
+            task.recurrence_rule !== 'diaria' &&
+            columnDate > endD
+          ) {
             return; // Recurrence has expired
           }
         }
@@ -121,14 +141,14 @@ export const Schedule: React.FC<ScheduleProps> = ({
           if (task.deadline) {
             taskDayNum = parseDateLocal(task.deadline).getDate();
           } else if (task.created_at) {
-            taskDayNum = new Date(task.created_at).getDate();
+            taskDayNum = new Date(task.created_at.replace(' ', 'T')).getDate();
           }
           if (columnDate.getDate() === taskDayNum) {
             const blk = task.work_blocks[0];
             items.push({
               task,
               block: blk,
-              displayTitle: blk?.notes || task.title,
+              displayTitle: getBlockTitle(task, blk),
               isCompleted: blk ? blk.completed : task.status === 'completed',
             });
           }
@@ -146,7 +166,7 @@ export const Schedule: React.FC<ScheduleProps> = ({
             items.push({
               task,
               block,
-              displayTitle: block.notes || task.title,
+              displayTitle: getBlockTitle(task, block),
               isCompleted: block.completed,
             });
           });
@@ -155,92 +175,73 @@ export const Schedule: React.FC<ScheduleProps> = ({
       }
 
       // 2. Single Task (Unique / Non-recurring)
-      const hasWorkBlocksWithWorkPrefix = task.work_blocks.some((b) =>
-        b.notes?.toLowerCase().startsWith('trabajo:')
-      );
+      let matchedWorkBlockThisDay = false;
 
-      if (hasWorkBlocksWithWorkPrefix) {
-        let deadlineEnd: Date | null = null;
-        let isDeliveryDay = false;
-        let deliveryTimeLabel = 'Entrega final';
-
-        if (task.deadline) {
-          const dl = parseDateLocal(task.deadline);
-          if (!isNaN(dl.getTime())) {
-            deadlineEnd = new Date(dl);
-            deadlineEnd.setHours(23, 59, 59, 999);
-            isDeliveryDay = isSameDay(columnDate, dl);
-            const pad = (n: number) => n.toString().padStart(2, '0');
-            const h = pad(dl.getHours());
-            const m = pad(dl.getMinutes());
-            deliveryTimeLabel = `Entrega (${h}:${m})`;
+      if (task.work_blocks && task.work_blocks.length > 0) {
+        const matchingBlocks = task.work_blocks.filter((b) => {
+          if (b.block_date) {
+            return isSameDay(columnDate, parseDateLocal(b.block_date));
           }
-        }
+          const bNorm = b.day_name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+          return bNorm === dayNameNorm || bNorm === 'todos';
+        });
 
-        // Display work sessions on matching days prior to deadline
-        const allowWorkBlock = !deadlineEnd || columnDate <= deadlineEnd;
-        if (allowWorkBlock) {
-          const matchingBlocks = task.work_blocks.filter((b) => {
-            const bNorm = b.day_name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-            return bNorm === dayNameNorm;
-          });
-
+        if (matchingBlocks.length > 0) {
           matchingBlocks.forEach((block) => {
             items.push({
               task,
               block,
-              displayTitle: block.notes || `Trabajo: ${task.title}`,
+              displayTitle: getBlockTitle(task, block),
               isCompleted: block.completed,
             });
           });
+          matchedWorkBlockThisDay = true;
         }
-
-        // On deadline day, display the final delivery card
-        if (isDeliveryDay) {
-          items.push({
-            task,
-            isDelivery: true,
-            displayTitle: task.title,
-            timeLabel: deliveryTimeLabel,
-            isCompleted: task.status === 'completed',
-          });
-        }
-        return;
       }
 
-      // Standard single task without work sessions
+      // Final delivery card for single tasks on their deadline date
       if (task.deadline) {
-        const d = parseDateLocal(task.deadline);
-        if (!isNaN(d.getTime()) && isSameDay(columnDate, d)) {
-          const blk = task.work_blocks[0];
+        const dl = parseDateLocal(task.deadline);
+        if (!isNaN(dl.getTime()) && isSameDay(columnDate, dl)) {
           const pad = (n: number) => n.toString().padStart(2, '0');
-          const h = pad(d.getHours());
-          const m = pad(d.getMinutes());
+          const h = pad(dl.getHours());
+          const m = pad(dl.getMinutes());
           const timeLabel = `Entrega (${h}:${m})`;
 
-          items.push({
-            task,
-            block: blk,
-            isDelivery: true,
-            displayTitle: task.title,
-            timeLabel,
-            isCompleted: blk ? blk.completed : task.status === 'completed',
+          // Avoid duplicate delivery card if a work block already covers this exact time
+          const exactTimeBlockExists = task.work_blocks?.some((b) => {
+            const bNorm = b.day_name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            return (bNorm === dayNameNorm || bNorm === 'todos') && b.start_time === `${h}:${m}`;
           });
+
+          if (!exactTimeBlockExists) {
+            items.push({
+              task,
+              block: task.work_blocks?.[0],
+              isDelivery: true,
+              displayTitle: task.title,
+              timeLabel,
+              isCompleted: task.status === 'completed',
+            });
+          }
+          return;
         }
+      }
+
+      if (matchedWorkBlockThisDay) {
         return;
       }
 
-      if (task.created_at) {
+      // Fallback for single tasks with no deadline and no work blocks, placed on creation date
+      if (task.created_at && (!task.work_blocks || task.work_blocks.length === 0)) {
         const cd = new Date(task.created_at.replace(' ', 'T'));
         if (!isNaN(cd.getTime()) && isSameDay(columnDate, cd)) {
-          const blk = task.work_blocks[0];
           items.push({
             task,
-            block: blk,
-            isDelivery: !blk,
+            isDelivery: true,
             displayTitle: task.title,
             timeLabel: 'Entrega final',
-            isCompleted: blk ? blk.completed : task.status === 'completed',
+            isCompleted: task.status === 'completed',
           });
         }
         return;
