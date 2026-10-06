@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   Sparkles,
@@ -9,6 +9,8 @@ import {
   Repeat,
   ChevronDown,
   CheckSquare,
+  Mic,
+  MicOff,
 } from 'lucide-react';
 import { Task, TaskCreateInput, WorkBlockInput } from '../../types';
 import { api } from '../../services/api';
@@ -16,6 +18,7 @@ import config from './TaskModal.json';
 import { TimePicker } from '../TimePicker/TimePicker';
 import { TASK_COLORS } from '../../utils/taskColors';
 import { useToast } from '../../context/ToastContext';
+import { useSpeechRecognition } from '../../hooks/useSpeechRecognition';
 import './TaskModal.css';
 
 interface TaskModalProps {
@@ -66,6 +69,38 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   const [loadingAI, setLoadingAI] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const baseAiPromptRef = useRef('');
+  const {
+    isListening: isListeningModal,
+    isSupported: isSpeechSupported,
+    toggleListening: toggleListeningModal,
+    error: speechModalError,
+  } = useSpeechRecognition({
+    onResult: (transcript) => {
+      const combined = baseAiPromptRef.current
+        ? `${baseAiPromptRef.current} ${transcript}`.trim()
+        : transcript;
+      setAiPrompt(combined);
+    },
+  });
+
+  useEffect(() => {
+    if (speechModalError) {
+      toast.error(speechModalError);
+    }
+  }, [speechModalError, toast]);
+
+  const handleToggleVoiceModal = () => {
+    if (!isSpeechSupported) {
+      toast.error('Tu navegador no soporta dictado por voz. Usa Chrome, Edge o Safari.');
+      return;
+    }
+    if (!isListeningModal) {
+      baseAiPromptRef.current = aiPrompt.trim();
+    }
+    toggleListeningModal();
+  };
 
   // Helper to extract YYYY-MM-DD from string
   const extractDateOnly = (iso?: string | null) => {
@@ -410,25 +445,53 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             <Sparkles className="w-3.5 h-3.5" />
             <span>Asistente Inteligente</span>
           </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={aiPrompt}
-              onChange={(e) => setAiPrompt(e.target.value)}
-              placeholder={config.aiPromptPlaceholder}
-              className="flex-1 text-xs px-3 py-2 rounded-lg border border-blue-200 bg-white/90 text-slate-800 focus:outline-none focus:border-[#0052FF]"
-              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAIParse())}
-            />
+          <div className="flex gap-2 items-center">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                placeholder={
+                  isListeningModal
+                    ? '🎙️ Escuchando... habla en voz alta'
+                    : config.aiPromptPlaceholder
+                }
+                className={`w-full text-xs px-3 py-2 pr-9 rounded-lg border transition-all ${
+                  isListeningModal
+                    ? 'border-red-400 bg-red-50/40 text-slate-900 ring-2 ring-red-400/20'
+                    : 'border-blue-200 bg-white/90 text-slate-800 focus:outline-none focus:border-[#0052FF]'
+                }`}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAIParse())}
+              />
+              <button
+                type="button"
+                onClick={handleToggleVoiceModal}
+                className={`absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-all cursor-pointer ${
+                  isListeningModal
+                    ? 'bg-red-500 text-white animate-pulse shadow-md shadow-red-500/30'
+                    : 'text-slate-400 hover:text-[#0052FF] hover:bg-blue-50/80'
+                }`}
+                title={isListeningModal ? 'Detener dictado por voz' : 'Dictar instrucción por voz'}
+              >
+                {isListeningModal ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+              </button>
+            </div>
             <button
               type="button"
               onClick={handleAIParse}
               disabled={loadingAI || !aiPrompt.trim()}
-              className="px-3.5 py-2 bg-[#0052FF] text-white text-xs font-semibold rounded-lg hover:bg-[#0038B6] disabled:opacity-50 transition-all flex items-center gap-1.5 shrink-0"
+              className="px-3.5 py-2 bg-[#0052FF] text-white text-xs font-semibold rounded-lg hover:bg-[#0038B6] disabled:opacity-50 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
             >
               {loadingAI ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
               <span>Autocompletar</span>
             </button>
           </div>
+          {isListeningModal && (
+            <div className="flex items-center gap-1.5 text-[10px] text-red-600 font-medium px-1 mt-1.5 animate-pulse">
+              <span className="w-2 h-2 rounded-full bg-red-500" />
+              <span>Escuchando... habla y tus palabras se escribirán aquí</span>
+            </div>
+          )}
         </div>
 
         {error && (
