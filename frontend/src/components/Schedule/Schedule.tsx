@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { CheckCircle2, Circle, Clock, Trash2, Calendar as CalIcon } from 'lucide-react';
 import { Task, WorkBlock } from '../../types';
 import { getTaskColorTheme } from '../../utils/taskColors';
@@ -34,37 +34,6 @@ export const Schedule: React.FC<ScheduleProps> = ({
   onToggleTaskStatus,
 }) => {
   const [mobileActiveDay, setMobileActiveDay] = useState<string>('all');
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  // Wheel listener: Converts vertical mouse wheel to immediate, stutter-free horizontal scroll on desktop monitors
-  useEffect(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
-
-    const onWheel = (e: WheelEvent) => {
-      // If user is holding shift, native browser horizontal scroll is active
-      if (e.shiftKey) return;
-      // If native horizontal trackpad swipe
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-      // If container fits without scroll, don't intercept
-      if (el.scrollWidth <= el.clientWidth) return;
-
-      // Allow vertical page scroll if at boundaries
-      const atStart = el.scrollLeft <= 0 && e.deltaY < 0;
-      const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 2 && e.deltaY > 0;
-      if (atStart || atEnd) return;
-
-      e.preventDefault();
-      let delta = e.deltaY;
-      if (e.deltaMode === 1) {
-        delta *= 32; // Normalize line scrolling (e.g. Firefox)
-      }
-      el.scrollLeft += delta;
-    };
-
-    el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
-  }, []);
 
   // Compute the 7 dates for the week containing selectedDate
   const getWeekDates = (baseDate: Date) => {
@@ -291,10 +260,7 @@ export const Schedule: React.FC<ScheduleProps> = ({
       </div>
 
       {/* Spacious Horizontal Week Board */}
-      <div
-        ref={scrollContainerRef}
-        className="schedule-week-scroll-container"
-      >
+      <div className="schedule-week-scroll-container">
         <div className="schedule-week-flex">
           {weekDays.map((col) => {
             const isHiddenOnMobile = mobileActiveDay !== 'all' && mobileActiveDay !== col.key;

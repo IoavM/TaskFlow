@@ -1,11 +1,10 @@
 .schedule-week-scroll-container {
   width: 100%;
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: visible;
   padding-top: 0.5rem;
   padding-bottom: 0.85rem;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
 }
 
 .schedule-week-scroll-container::-webkit-scrollbar {
