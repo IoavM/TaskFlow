@@ -114,30 +114,40 @@ export const PersonalizationModal: React.FC<PersonalizationModalProps> = ({ isOp
                   <button
                     key={th.id}
                     onClick={() => setTheme(th.id)}
-                    className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden flex flex-col justify-between ${
+                    className={`p-3.5 rounded-xl border text-left transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer ${
                       isSelected
-                        ? 'border-[#0052FF] bg-white/95 shadow-md shadow-blue-500/10 ring-2 ring-[#0052FF]/20'
+                        ? 'border-[#0052FF] bg-gradient-to-br from-blue-50 via-sky-50/70 to-indigo-50/50 shadow-md shadow-blue-500/10 ring-2 ring-[#0052FF]/30'
                         : 'border-slate-200/80 bg-white/60 hover:bg-white hover:border-slate-300'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold text-slate-900">{th.name}</span>
-                      <div className="flex gap-1">
+                    <div className="flex items-center justify-between mb-2 gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-all ${
+                            isSelected
+                              ? 'bg-[#0052FF] text-white shadow-xs'
+                              : 'border border-slate-300 bg-white/80'
+                          }`}
+                        >
+                          {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                        </span>
+                        <span className={`text-xs font-bold truncate ${isSelected ? 'text-[#0052FF]' : 'text-slate-900'}`}>
+                          {th.name}
+                        </span>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
                         {th.colors.map((c, i) => (
                           <div
                             key={i}
-                            className="w-3.5 h-3.5 rounded-full shadow-2xs"
+                            className="w-3.5 h-3.5 rounded-full shadow-2xs border border-white/60"
                             style={{ backgroundColor: c }}
                           />
                         ))}
                       </div>
                     </div>
-                    <p className="text-[11px] text-slate-500 leading-tight">{th.desc}</p>
-                    {isSelected && (
-                      <div className="absolute top-2 right-2 text-[#0052FF]">
-                        <Check className="w-3.5 h-3.5" />
-                      </div>
-                    )}
+                    <p className={`text-[11px] leading-tight ${isSelected ? 'text-blue-900/80 font-medium' : 'text-slate-500'}`}>
+                      {th.desc}
+                    </p>
                   </button>
                 );
               })}
@@ -157,14 +167,19 @@ export const PersonalizationModal: React.FC<PersonalizationModalProps> = ({ isOp
                   <button
                     key={it.id}
                     onClick={() => setIntensity(it.id)}
-                    className={`p-2.5 rounded-xl border text-center transition-all ${
+                    className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
                       isSelected
-                        ? 'border-[#0052FF] bg-blue-50/80 text-[#0052FF] font-bold shadow-xs'
-                        : 'border-slate-200/80 bg-white/60 text-slate-600 hover:bg-white'
+                        ? 'border-[#0052FF] bg-blue-50 text-[#0052FF] font-bold shadow-xs ring-2 ring-[#0052FF]/25'
+                        : 'border-slate-200/80 bg-white/60 text-slate-600 hover:bg-white hover:border-slate-300'
                     }`}
                   >
-                    <span className="block text-xs font-semibold">{it.label}</span>
-                    <span className="text-[10px] text-slate-400 block mt-0.5">{it.desc}</span>
+                    <span className="flex items-center justify-center gap-1 text-xs font-semibold">
+                      {isSelected && <Check className="w-3 h-3 text-[#0052FF] stroke-[3]" />}
+                      {it.label}
+                    </span>
+                    <span className={`text-[10px] block mt-0.5 ${isSelected ? 'text-blue-700/80' : 'text-slate-400'}`}>
+                      {it.desc}
+                    </span>
                   </button>
                 );
               })}
@@ -188,7 +203,7 @@ export const PersonalizationModal: React.FC<PersonalizationModalProps> = ({ isOp
             </div>
             <button
               onClick={() => setAnimateMesh(!settings.animateMesh)}
-              className={`w-12 h-6.5 rounded-full p-1 transition-colors flex items-center ${
+              className={`w-12 h-6.5 rounded-full p-1 transition-colors flex items-center cursor-pointer ${
                 settings.animateMesh ? 'bg-[#0052FF]' : 'bg-slate-300'
               }`}
             >
@@ -212,16 +227,23 @@ export const PersonalizationModal: React.FC<PersonalizationModalProps> = ({ isOp
                   <button
                     key={col.hex}
                     onClick={() => setAccentColor(col.hex)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all"
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs transition-all cursor-pointer ${
+                      isSelected ? 'font-bold shadow-xs' : 'font-medium hover:bg-white'
+                    }`}
                     style={{
                       borderColor: isSelected ? col.hex : 'rgba(203, 213, 225, 0.7)',
-                      backgroundColor: isSelected ? `${col.hex}15` : 'rgba(255, 255, 255, 0.7)',
+                      backgroundColor: isSelected ? `${col.hex}22` : 'rgba(255, 255, 255, 0.7)',
                       color: isSelected ? col.hex : '#334155',
+                      boxShadow: isSelected ? `0 0 0 2px ${col.hex}33` : undefined,
                     }}
                   >
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: col.hex }} />
+                    <div
+                      className="w-3.5 h-3.5 rounded-full shadow-2xs flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: col.hex }}
+                    >
+                      {isSelected && <Check className="w-2.5 h-2.5 text-white stroke-[3]" />}
+                    </div>
                     <span>{col.name}</span>
-                    {isSelected && <Check className="w-3 h-3 ml-0.5" />}
                   </button>
                 );
               })}
