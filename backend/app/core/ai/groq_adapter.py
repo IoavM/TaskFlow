@@ -81,6 +81,8 @@ class GroqAdapter(AITaskPlannerPort):
                         "sabado": "Sábado", "sábado": "Sábado", "domingo": "Domingo"
                     }
 
+                    days_order = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+
                     def _sanitize_task_dict(t: dict):
                         if not isinstance(t, dict):
                             return
@@ -90,6 +92,21 @@ class GroqAdapter(AITaskPlannerPort):
                                     raw_day = str(b.get("day_name", "")).strip().lower()
                                     if raw_day in valid_days:
                                         b["day_name"] = valid_days[raw_day]
+
+                            # Ensure non-recurring tasks have accurate deadline matching their scheduled day of the week
+                            if not t.get("is_recurring") and len(t["work_blocks"]) > 0:
+                                first_b = t["work_blocks"][0]
+                                b_day = str(first_b.get("day_name", "")).strip().lower()
+                                if b_day in days_order:
+                                    target_idx = days_order.index(b_day)
+                                    now = datetime.now()
+                                    today_idx = now.weekday()
+                                    days_ahead = (target_idx - today_idx) % 7
+                                    target_date = now + timedelta(days=days_ahead)
+                                    time_str = first_b.get("start_time") or "14:00"
+                                    t["deadline"] = f"{target_date.strftime('%Y-%m-%d')}T{time_str}:00"
+                            elif t.get("is_recurring") and not t.get("recurrence_rule") == "personalizado":
+                                t["deadline"] = None
 
                     if isinstance(parsed, list):
                         for item in parsed:

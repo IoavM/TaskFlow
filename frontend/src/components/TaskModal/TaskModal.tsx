@@ -133,6 +133,51 @@ export const TaskModal: React.FC<TaskModalProps> = ({
     );
   };
 
+  // Helper to extract or resolve accurate event date from task data
+  const resolveTaskDate = (task: Task) => {
+    const firstBlock = task.work_blocks?.[0];
+    if (firstBlock?.block_date) {
+      return extractDateOnly(firstBlock.block_date);
+    }
+
+    if (task.deadline) {
+      const dStr = extractDateOnly(task.deadline);
+      if (firstBlock?.day_name) {
+        const [y, m, d] = dStr.split('-').map(Number);
+        const dateObj = new Date(y, m - 1, d);
+        const daysMap = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        const deadlineDayName = !isNaN(dateObj.getTime()) ? daysMap[dateObj.getDay()] : '';
+        const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+        // If deadline day matches the block's day_name, keep deadline date
+        if (norm(deadlineDayName) === norm(firstBlock.day_name)) {
+          return dStr;
+        }
+
+        // If deadline day conflicts with block's day_name (e.g. deadline is 2027 Monday, block is Miércoles):
+        // Align date to the block's day_name for the task's week
+        const refDate = task.created_at ? new Date(task.created_at.replace(' ', 'T')) : new Date();
+        const refDayOfWeek = (refDate.getDay() + 6) % 7; // Monday = 0
+        const monday = new Date(refDate);
+        monday.setDate(refDate.getDate() - refDayOfWeek);
+
+        const dayKeys = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+        const targetIdx = dayKeys.indexOf(norm(firstBlock.day_name));
+        if (targetIdx !== -1) {
+          const resolvedDate = new Date(monday);
+          resolvedDate.setDate(monday.getDate() + targetIdx);
+          const pad = (n: number) => n.toString().padStart(2, '0');
+          return `${resolvedDate.getFullYear()}-${pad(resolvedDate.getMonth() + 1)}-${pad(resolvedDate.getDate())}`;
+        }
+      }
+      return dStr;
+    }
+
+    const today = new Date();
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+  };
+
   useEffect(() => {
     if (isOpen) {
       if (taskToEdit) {
@@ -144,35 +189,38 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         setRecurrenceRule(taskToEdit.recurrence_rule || 'semanal');
 
         // Extract delivery date & time
-        const dStr = extractDateOnly(taskToEdit.deadline);
+        const dStr = resolveTaskDate(taskToEdit);
         setSingleDate(dStr);
-        setDeliveryTime(extractTimeOnly(taskToEdit.deadline, '23:59'));
 
         // Hours from work_blocks
         const block = taskToEdit.work_blocks && taskToEdit.work_blocks.length > 0 ? taskToEdit.work_blocks[0] : null;
-        const sTime = block?.start_time || '14:00';
-        const eTime = block?.end_time || '16:00';
+        const sTime = block?.start_time || extractTimeOnly(taskToEdit.deadline, '14:00');
+        const eTime = block?.end_time || '15:00';
 
         setSingleStartTime(sTime);
         setSingleEndTime(eTime);
+        setDeliveryTime(sTime);
         setDailyStartTime(sTime);
         setDailyEndTime(eTime);
         setWorkStartTime(sTime);
         setWorkEndTime(eTime);
 
-        // Check if single task has work session blocks
+        // Check if single task has prep work session blocks
         if (!isRec && taskToEdit.work_blocks && taskToEdit.work_blocks.length > 0) {
           const hasWorkPrefix = taskToEdit.work_blocks.some((b) => b.notes?.startsWith('Trabajo:'));
           const days = taskToEdit.work_blocks
             .map((b) => b.day_name)
             .filter((d) => ALL_DAYS.includes(d));
 
-          if (hasWorkPrefix || (taskToEdit.deadline && days.length > 0)) {
+          // wantWorkDays is only for multi-session prep tasks or explicitly marked with 'Trabajo:'
+          const isPrepTask = hasWorkPrefix || taskToEdit.work_blocks.length > 1;
+
+          if (isPrepTask && days.length > 0) {
             setWantWorkDays(true);
-            setWorkDays(days.length > 0 ? days : [getTodayDayName()]);
+            setWorkDays(days);
           } else {
             setWantWorkDays(false);
-            setWorkDays([getTodayDayName()]);
+            setWorkDays(days.length > 0 ? days : [getTodayDayName()]);
           }
         } else {
           setWantWorkDays(false);
@@ -318,9 +366,10 @@ export const TaskModal: React.FC<TaskModalProps> = ({
       let formattedDeadline: string | undefined = undefined;
 
       if (!isRecurring) {
-        // Tarea Única: hora exacta de entrega
-        const cleanDeliveryTime = deliveryTime || '23:00';
-        formattedDeadline = `${singleDate}T${cleanDeliveryTime}:00`;
+        // Tarea Única: hora exacta de evento o entrega
+        const cleanStartTime = singleStartTime || deliveryTime || '14:00';
+        const cleanEndTime = singleEndTime || '15:00';
+        formattedDeadline = `${singleDate}T${cleanStartTime}:00`;
 
         if (wantWorkDays && workDays.length > 0) {
           // Genera bloques de trabajo como extensiones de la tarea principal
@@ -332,25 +381,18 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             color: color,
           }));
         } else {
-          // Bloque estándar en el día de la entrega sincronizado con la hora y minuto de entrega
+          // Bloque estándar en el día de la cita/evento sincronizado con el horario
           const [y, m, d] = singleDate.split('-').map(Number);
           const dateObj = new Date(y, m - 1, d);
           const daysMap = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
           const dayName = !isNaN(dateObj.getTime()) ? daysMap[dateObj.getDay()] : 'Lunes';
 
-          const [dH = '23', dM = '00'] = cleanDeliveryTime.split(':');
-          const dHNum = parseInt(dH, 10);
-          const pad = (n: number) => n.toString().padStart(2, '0');
-          const startT = `${pad(dHNum)}:${dM}`;
-          const endHNum = (dHNum + 1) % 24;
-          const endT = `${pad(endHNum)}:${dM}`;
-
           finalBlocks = [
             {
               day_name: dayName,
-              start_time: startT,
-              end_time: endT,
-              block_date: `${singleDate}T${startT}:00`,
+              start_time: cleanStartTime,
+              end_time: cleanEndTime,
+              block_date: `${singleDate}T${cleanStartTime}:00`,
               notes: title,
               color: color,
             },
@@ -610,7 +652,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-800 mb-1">
-                    Fecha de Entrega o Realización <span className="text-[#0052FF]">*</span>
+                    Fecha del Evento o Entrega <span className="text-[#0052FF]">*</span>
                   </label>
                   <input
                     type="date"
@@ -622,16 +664,26 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-800 mb-1">
-                    Hora Límite de Entrega
+                    Horario de Realización o Entrega
                   </label>
-                  <TimePicker
-                    value={deliveryTime}
-                    onChange={(val) => setDeliveryTime(val)}
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <TimePicker
+                      value={singleStartTime || deliveryTime}
+                      onChange={(val) => {
+                        setSingleStartTime(val);
+                        setDeliveryTime(val);
+                      }}
+                    />
+                    <span className="text-slate-400 font-medium text-xs">a</span>
+                    <TimePicker
+                      value={singleEndTime}
+                      onChange={(val) => setSingleEndTime(val)}
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Casilla Opcional: ¿Quieres trabajarlo en días específicos? */}
+              {/* Casilla Opcional: ¿Quieres agendar días de preparación previos? */}
               <div className="pt-3 border-t border-slate-200/70">
                 <label className="flex items-center gap-2.5 cursor-pointer select-none">
                   <input
@@ -642,10 +694,10 @@ export const TaskModal: React.FC<TaskModalProps> = ({
                   />
                   <div>
                     <span className="text-xs font-bold text-slate-800 block">
-                      ¿Quieres trabajarlo en algún día en específico?
+                      ¿Quieres agendar sesiones de preparación previas a la entrega?
                     </span>
                     <span className="text-[10px] text-slate-500">
-                      Opcional: Agenda bloques de preparación previos a la entrega
+                      Opcional: Para exámenes o proyectos que requieran días de estudio adicionales
                     </span>
                   </div>
                 </label>

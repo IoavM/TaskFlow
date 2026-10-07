@@ -60,10 +60,14 @@ def create_task_directly_with_ai(
         blocks_in = []
         for b in item.get("work_blocks", []):
             if isinstance(b, dict):
+                b_date = b.get("block_date")
+                if not b_date and item.get("deadline") and not item.get("is_recurring"):
+                    b_date = item.get("deadline")
                 blocks_in.append(WorkBlockCreate(
                     day_name=b.get("day_name", "Lunes"),
                     start_time=b.get("start_time"),
                     end_time=b.get("end_time"),
+                    block_date=b_date,
                     notes=b.get("notes")
                 ))
 
