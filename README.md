@@ -2,6 +2,19 @@
 
 Sistema inteligente de gestión de tareas y cronograma semanal con estilos **Glassmorphism**, arquitectura en 4 capas y asistencia de IA con **Gemini**.
 
+🌐 **Demo en vivo:** [https://task-flow-silk-seven.vercel.app](https://task-flow-silk-seven.vercel.app)
+
+---
+
+## ✨ Características Principales
+
+- 🤖 **Asistente de IA (Gemini):** Planificación inteligente y desglose automático de tareas con estimación de tiempos.
+- 🎙️ **Dictado por Voz:** Creación rápida de tareas mediante reconocimiento de voz integrado.
+- 📅 **Cronograma Semanal Interactivo:** Bloques de trabajo visuales distribuidos por días de preparación y fecha límite.
+- 🎵 **Integración con Spotify:** Selector y reproductor de playlists para sesiones de concentración.
+- 🔒 **Autenticación Segura:** Soporte para Google OAuth y tokens JWT con Bcrypt.
+- 💎 **Diseño Glassmorphism:** Interfaz moderna, fluida y reactiva construida con Tailwind CSS.
+
 ---
 
 ## 🏗️ Arquitectura del Sistema (4 Capas)
