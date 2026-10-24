@@ -1,25 +1,25 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class WorkBlockBase(BaseModel):
-    day_name: str
-    start_time: Optional[str] = None
-    end_time: Optional[str] = None
+    day_name: str = Field(..., max_length=20)
+    start_time: Optional[str] = Field(None, max_length=10)
+    end_time: Optional[str] = Field(None, max_length=10)
     block_date: Optional[datetime] = None
     completed: bool = False
-    notes: Optional[str] = None
-    color: Optional[str] = None
+    notes: Optional[str] = Field(None, max_length=1000)
+    color: Optional[str] = Field(None, max_length=30)
 
 class WorkBlockCreate(WorkBlockBase):
     pass
 
 class WorkBlockUpdate(BaseModel):
     completed: Optional[bool] = None
-    notes: Optional[str] = None
-    start_time: Optional[str] = None
-    end_time: Optional[str] = None
-    color: Optional[str] = None
+    notes: Optional[str] = Field(None, max_length=1000)
+    start_time: Optional[str] = Field(None, max_length=10)
+    end_time: Optional[str] = Field(None, max_length=10)
+    color: Optional[str] = Field(None, max_length=30)
 
 class WorkBlockResponse(WorkBlockBase):
     id: int

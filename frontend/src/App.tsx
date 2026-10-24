@@ -10,16 +10,20 @@ import { ErrorBoundary } from './components/ErrorBoundary/ErrorBoundary';
 import { api, preemptiveWarmup } from './services/api';
 
 function AppContent() {
-  const [currentView, setCurrentView] = useState<'login' | 'register' | 'schedule'>('login');
+  const [currentView, setCurrentView] = useState<'login' | 'register' | 'schedule'>(() => {
+    return api.isAuthenticated() ? 'schedule' : 'login';
+  });
   const { toast } = useToast();
 
   useEffect(() => {
     // Fire a silent /health ping to wake Render before the user clicks anything
     preemptiveWarmup();
 
-    const token = localStorage.getItem('taskflow_token');
-    if (token) {
-      setCurrentView('schedule');
+    // Sincronizar datos del usuario en segundo plano si la sesión está activa
+    if (api.isAuthenticated()) {
+      api.getMe().catch(() => {
+        // Silencioso ante fallos temporales de red; el interceptor 401 maneja expiración real
+      });
     }
 
     const handleSessionExpired = () => {

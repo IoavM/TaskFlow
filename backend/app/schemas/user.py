@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 class UserBase(BaseModel):
     email: EmailStr
@@ -9,7 +9,12 @@ class UserBase(BaseModel):
     phone: Optional[str] = None
 
 class UserCreate(UserBase):
-    password: str
+    password: str = Field(
+        ...,
+        min_length=8,
+        max_length=128,
+        description="Contraseña del usuario (mínimo 8 caracteres, máximo 128)"
+    )
 
 class UserLogin(BaseModel):
     email: EmailStr

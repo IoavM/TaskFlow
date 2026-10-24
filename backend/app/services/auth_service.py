@@ -18,6 +18,10 @@ class AuthService:
     def authenticate_user(self, credentials: UserLogin) -> Optional[User]:
         user = self.user_repo.get_by_email(credentials.email)
         if not user:
+            # OWASP A02/A07: Mitigación contra ataque de sincronización (timing attack / enumeración de usuarios).
+            # Ejecuta la verificación contra un hash ficticio para que el tiempo de respuesta sea constante.
+            dummy_hash = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj404i7c0N2O"
+            verify_password(credentials.password, dummy_hash)
             return None
         if not verify_password(credentials.password, user.password_hash):
             return None

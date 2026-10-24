@@ -104,6 +104,11 @@ export const AuthForm: React.FC<AuthFormProps> = ({
       return;
     }
 
+    if (mode === 'register' && formData.password.length < 8) {
+      setErrorMessage('La contraseña debe tener al menos 8 caracteres por seguridad.');
+      return;
+    }
+
     try {
       setLoading(true);
       setErrorMessage(null);

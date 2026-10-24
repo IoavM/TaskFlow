@@ -295,6 +295,39 @@ export const api = {
     localStorage.removeItem('taskflow_user');
   },
 
+  isAuthenticated(): boolean {
+    if (typeof window === 'undefined') return false;
+    const token = localStorage.getItem('taskflow_token');
+    if (!token) return false;
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return false;
+      const base64Url = parts[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const payloadStr = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      const payload = JSON.parse(payloadStr);
+      if (payload.exp && Date.now() >= payload.exp * 1000) {
+        localStorage.removeItem('taskflow_token');
+        localStorage.removeItem('taskflow_user');
+        return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  async getMe(): Promise<User> {
+    const user = await request<User>('/auth/me');
+    localStorage.setItem('taskflow_user', JSON.stringify(user));
+    return user;
+  },
+
   getCurrentStoredUser(): User | null {
     const raw = localStorage.getItem('taskflow_user');
     return raw ? JSON.parse(raw) : null;

@@ -31,28 +31,73 @@ async def lifespan(app: FastAPI):
         print("Database tables verified successfully.")
     except Exception as e:
         print(f"Warning: Database table auto-creation skipped or delayed: {e}")
+
+    # OWASP A02: Alerta si se utiliza la clave secreta predeterminada
+    if settings.SECRET_KEY == "super-secret-key-change-this-in-production-123456789":
+        logger.warning(
+            "ALERTA OWASP A02: Se está utilizando la SECRET_KEY predeterminada. "
+            "Para producción, configura una SECRET_KEY única en las variables de entorno."
+        )
     yield
+
+# OWASP A05: Control de exposición de documentación de API
+docs_url = f"{settings.API_V1_STR}/docs" if settings.DOCS_ENABLED else None
+redoc_url = f"{settings.API_V1_STR}/redoc" if settings.DOCS_ENABLED else None
+openapi_url = f"{settings.API_V1_STR}/openapi.json" if settings.DOCS_ENABLED else None
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    openapi_url=openapi_url,
+    docs_url=docs_url,
+    redoc_url=redoc_url,
     lifespan=lifespan
 )
 
-# Standard CORS headers to ensure browsers never see opaque CORS errors on error responses
+import re
+
+# Origins allowed for CORS (Local dev, Vercel frontend, and Render backend preview/prod)
+ALLOWED_ORIGIN_REGEX = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$|^https://.*\.vercel\.app$|^https://.*\.onrender\.com$"
+
+def get_cors_headers(request: Request) -> dict:
+    origin = request.headers.get("origin", "")
+    if origin and re.match(ALLOWED_ORIGIN_REGEX, origin):
+        return {
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Credentials": "true",
+        }
+    return {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "*",
+    }
+
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "*",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "*",
-    "Access-Control-Allow-Credentials": "true",
 }
 
-# CORS configuration to allow local React frontend requests
+# OWASP A05: Inyectar Cabeceras de Seguridad HTTP Defensivas
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    if request.url.scheme == "https":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
+# CORS configuration to restrict origins safely
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origin_regex=ALLOWED_ORIGIN_REGEX,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -135,14 +180,14 @@ async def database_exception_handler(request: Request, exc: SQLAlchemyError):
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """
-    Global catch-all for any uncaught runtime exceptions.
-    Prevents raw crashes and guarantees CORS headers so frontend doesn't mask as 'Failed to fetch'.
+    Global catch-all for any uncaught runtime exceptions (OWASP A04/A05).
+    Logs the full traceback internally but avoids leaking internals or stack traces to the client.
     """
-    traceback.print_exc()
+    logger.error(f"Error interno no controlado en {request.method} {request.url.path}: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={"detail": f"Error en el servidor: {str(exc)}"},
-        headers=CORS_HEADERS
+        content={"detail": "Ha ocurrido un error interno en el servidor. Por favor intenta de nuevo más tarde."},
+        headers=get_cors_headers(request)
     )
 
 @app.get("/health")
