@@ -1,14 +1,44 @@
-# Dependencies
+# ==============================================================================
+# TaskFlow .gitignore (Optimizado para Vercel, Neon PostgreSQL y FastAPI)
+# ==============================================================================
+
+# ─── Environment files & Secrets (CRÍTICO) ──────────────────────────────────
+.env
+.env.*
+*.env
+*.env.*
+backend/.env
+frontend/.env
+*.pem
+*.key
+*.cert
+*.crt
+secrets/
+
+# ─── Bases de Datos Locales (Producción usa Neon PostgreSQL) ────────────────
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.sql
+taskflow.db
+
+# ─── Vercel Deployment & Cache ──────────────────────────────────────────────
+.vercel
+
+# ─── Dependencies ───────────────────────────────────────────────────────────
 node_modules/
 .pnp
 .pnp.js
 
-# Production build
+# ─── Production Builds & Bundles ────────────────────────────────────────────
 dist/
 dist-ssr/
 build/
+frontend/dist/
+*.tsbuildinfo
 
-# Logs
+# ─── Logs ───────────────────────────────────────────────────────────────────
 logs/
 *.log
 npm-debug.log*
@@ -16,22 +46,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Environment files and credentials (CRITICAL)
-.env
-.env.*
-*.env*
-backend/.env
-
-# Build info
-*.tsbuildinfo
-
-# Databases & local storage
-*.db
-*.sqlite
-*.sqlite3
-taskflow.db
-
-# Python & Caches
+# ─── Python Bytecode, Caches & Virtual Envs ─────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
@@ -41,12 +56,18 @@ htmlcov/
 .venv/
 venv/
 env/
+backend/.venv/
+.mypy_cache/
+.ruff_cache/
 
-# Editor & OS files
-.vscode/*
-!.vscode/extensions.json
+# ─── Editor & OS files ──────────────────────────────────────────────────────
+.vscode/
+**/.vscode/
 .idea/
 .DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 *.swp
 *.swo
+*~
