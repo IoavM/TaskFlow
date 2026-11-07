@@ -2,7 +2,7 @@ import React from 'react';
 import { CheckCircle2, Circle, Clock, Repeat } from 'lucide-react';
 import { Task, WorkBlock } from '../../types';
 import { getTaskColorTheme } from '../../utils/taskColors';
-import { parseDateLocal } from '../../utils/dateUtils';
+import { parseDateLocal, isSameDay, isSameWeek } from '../../utils/dateUtils';
 import config from './HourlyCalendar.json';
 import './HourlyCalendar.css';
 
@@ -85,13 +85,19 @@ export const HourlyCalendar: React.FC<HourlyCalendarProps> = ({
         if (t.deadline) {
           const endD = parseDateLocal(t.deadline);
           endD.setHours(23, 59, 59, 999);
-          // Only expire if explicitly user-bounded and not standard indefinite weekly/daily habit
-          if (
-            t.recurrence_rule !== 'semanal' &&
-            t.recurrence_rule !== 'diaria' &&
-            columnDate > endD
-          ) {
+          if (columnDate > endD) {
             return; // Recurrence has expired
+          }
+        }
+
+        if (t.created_at) {
+          const cDate = parseDateLocal(t.created_at);
+          const cDay = (cDate.getDay() + 6) % 7;
+          const cMonday = new Date(cDate);
+          cMonday.setDate(cDate.getDate() - cDay);
+          cMonday.setHours(0, 0, 0, 0);
+          if (columnDate < cMonday) {
+            return; // Don't show in weeks prior to task creation
           }
         }
 
@@ -127,6 +133,15 @@ export const HourlyCalendar: React.FC<HourlyCalendarProps> = ({
       }
 
       // 2. Single Task (Unique / Non-recurring)
+      // Check if deadline has passed relative to this column day
+      if (t.deadline) {
+        const dlEnd = parseDateLocal(t.deadline);
+        dlEnd.setHours(23, 59, 59, 999);
+        if (columnDate > dlEnd) {
+          return; // The deadline has expired; do not show single task in subsequent days/weeks
+        }
+      }
+
       let matchedWorkBlock = false;
       if (t.work_blocks && t.work_blocks.length > 0) {
         t.work_blocks.forEach((b) => {
@@ -137,6 +152,17 @@ export const HourlyCalendar: React.FC<HourlyCalendarProps> = ({
             }
             return;
           }
+
+          // Fallback for single tasks without block_date:
+          // Strictly anchor to the target week of deadline (or creation date)
+          const refDate = t.deadline
+            ? parseDateLocal(t.deadline)
+            : (t.created_at ? parseDateLocal(t.created_at) : null);
+
+          if (!refDate || !isSameWeek(columnDate, refDate)) {
+            return;
+          }
+
           const bNorm = b.day_name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
           if (bNorm === dayNameNorm || bNorm === 'todos') {
             list.push({ task: t, block: b });

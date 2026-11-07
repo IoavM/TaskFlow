@@ -51,3 +51,21 @@ export const isSameDay = (d1: Date, d2: Date): boolean =>
   d1.getDate() === d2.getDate() &&
   d1.getMonth() === d2.getMonth() &&
   d1.getFullYear() === d2.getFullYear();
+
+export const isSameWeek = (d1: Date, d2: Date): boolean => {
+  const getMonday = (d: Date) => {
+    const copy = new Date(d);
+    const day = (copy.getDay() + 6) % 7; // Monday = 0
+    copy.setDate(copy.getDate() - day);
+    copy.setHours(0, 0, 0, 0);
+    return copy.getTime();
+  };
+  return getMonday(d1) === getMonday(d2);
+};
+
+export const isTaskOverdue = (task: { status?: string; deadline?: string | null }): boolean => {
+  if (task.status === 'completed') return false;
+  if (!task.deadline) return false;
+  const dl = parseDateLocal(task.deadline);
+  return !isNaN(dl.getTime()) && dl.getTime() < Date.now();
+};

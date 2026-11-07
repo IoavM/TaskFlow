@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { CheckCircle2, Circle, Clock, Trash2, Calendar as CalIcon } from 'lucide-react';
 import { Task, WorkBlock } from '../../types';
 import { getTaskColorTheme } from '../../utils/taskColors';
-import { parseDateLocal, isSameDay } from '../../utils/dateUtils';
+import { parseDateLocal, isSameDay, isSameWeek, isTaskOverdue } from '../../utils/dateUtils';
 import config from './Schedule.json';
 import './Schedule.css';
 
@@ -95,13 +95,19 @@ export const Schedule: React.FC<ScheduleProps> = ({
         if (task.deadline) {
           const endD = parseDateLocal(task.deadline);
           endD.setHours(23, 59, 59, 999);
-          // Only expire if explicitly user-bounded and not standard indefinite weekly/daily habit
-          if (
-            task.recurrence_rule !== 'semanal' &&
-            task.recurrence_rule !== 'diaria' &&
-            columnDate > endD
-          ) {
+          if (columnDate > endD) {
             return; // Recurrence has expired
+          }
+        }
+
+        if (task.created_at) {
+          const cDate = parseDateLocal(task.created_at);
+          const cDay = (cDate.getDay() + 6) % 7;
+          const cMonday = new Date(cDate);
+          cMonday.setDate(cDate.getDate() - cDay);
+          cMonday.setHours(0, 0, 0, 0);
+          if (columnDate < cMonday) {
+            return; // Don't show in weeks prior to task creation
           }
         }
 
@@ -144,6 +150,15 @@ export const Schedule: React.FC<ScheduleProps> = ({
       }
 
       // 2. Single Task (Unique / Non-recurring)
+      // Check if deadline has passed relative to this column day
+      if (task.deadline) {
+        const dlEnd = parseDateLocal(task.deadline);
+        dlEnd.setHours(23, 59, 59, 999);
+        if (columnDate > dlEnd) {
+          return; // The deadline has expired; do not show single task in subsequent days/weeks
+        }
+      }
+
       let matchedWorkBlockThisDay = false;
 
       if (task.work_blocks && task.work_blocks.length > 0) {
@@ -151,6 +166,17 @@ export const Schedule: React.FC<ScheduleProps> = ({
           if (b.block_date) {
             return isSameDay(columnDate, parseDateLocal(b.block_date));
           }
+
+          // Fallback for single tasks without block_date:
+          // Strictly anchor to the target week of deadline (or creation date)
+          const refDate = task.deadline
+            ? parseDateLocal(task.deadline)
+            : (task.created_at ? parseDateLocal(task.created_at) : null);
+
+          if (!refDate || !isSameWeek(columnDate, refDate)) {
+            return false;
+          }
+
           const bNorm = b.day_name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
           return bNorm === dayNameNorm || bNorm === 'todos';
         });
@@ -334,6 +360,11 @@ export const Schedule: React.FC<ScheduleProps> = ({
                               >
                                 {displayTitle || task.title || 'Tarea sin título'}
                               </h4>
+                              {isTaskOverdue(task) && !isCompleted && (
+                                <span className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-rose-50 text-rose-600 border border-rose-200 shrink-0">
+                                  Vencida
+                                </span>
+                              )}
                             </div>
 
                             {/* Quick Delete Only */}

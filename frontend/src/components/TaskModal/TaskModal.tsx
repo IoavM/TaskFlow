@@ -135,44 +135,16 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
   // Helper to extract or resolve accurate event date from task data
   const resolveTaskDate = (task: Task) => {
+    if (task.deadline) {
+      return extractDateOnly(task.deadline);
+    }
     const firstBlock = task.work_blocks?.[0];
     if (firstBlock?.block_date) {
       return extractDateOnly(firstBlock.block_date);
     }
-
-    if (task.deadline) {
-      const dStr = extractDateOnly(task.deadline);
-      if (firstBlock?.day_name) {
-        const [y, m, d] = dStr.split('-').map(Number);
-        const dateObj = new Date(y, m - 1, d);
-        const daysMap = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-        const deadlineDayName = !isNaN(dateObj.getTime()) ? daysMap[dateObj.getDay()] : '';
-        const norm = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-
-        // If deadline day matches the block's day_name, keep deadline date
-        if (norm(deadlineDayName) === norm(firstBlock.day_name)) {
-          return dStr;
-        }
-
-        // If deadline day conflicts with block's day_name (e.g. deadline is 2027 Monday, block is Miércoles):
-        // Align date to the block's day_name for the task's week
-        const refDate = task.created_at ? new Date(task.created_at.replace(' ', 'T')) : new Date();
-        const refDayOfWeek = (refDate.getDay() + 6) % 7; // Monday = 0
-        const monday = new Date(refDate);
-        monday.setDate(refDate.getDate() - refDayOfWeek);
-
-        const dayKeys = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
-        const targetIdx = dayKeys.indexOf(norm(firstBlock.day_name));
-        if (targetIdx !== -1) {
-          const resolvedDate = new Date(monday);
-          resolvedDate.setDate(monday.getDate() + targetIdx);
-          const pad = (n: number) => n.toString().padStart(2, '0');
-          return `${resolvedDate.getFullYear()}-${pad(resolvedDate.getMonth() + 1)}-${pad(resolvedDate.getDate())}`;
-        }
-      }
-      return dStr;
+    if (task.created_at) {
+      return extractDateOnly(task.created_at);
     }
-
     const today = new Date();
     const pad = (n: number) => n.toString().padStart(2, '0');
     return `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
@@ -372,14 +344,35 @@ export const TaskModal: React.FC<TaskModalProps> = ({
         formattedDeadline = `${singleDate}T${cleanStartTime}:00`;
 
         if (wantWorkDays && workDays.length > 0) {
-          // Genera bloques de trabajo como extensiones de la tarea principal
-          finalBlocks = workDays.map((day) => ({
-            day_name: day,
-            start_time: workStartTime,
-            end_time: workEndTime,
-            notes: `Trabajo: ${title}`,
-            color: color,
-          }));
+          // Genera bloques de trabajo como extensiones de la tarea principal en la semana de la fecha límite
+          const [y, m, d] = singleDate.split('-').map(Number);
+          const dlDateObj = new Date(y, m - 1, d);
+          const dlDayOfWeek = (dlDateObj.getDay() + 6) % 7; // Monday = 0
+          const monday = new Date(dlDateObj);
+          monday.setDate(dlDateObj.getDate() - dlDayOfWeek);
+
+          const daysMap: Record<string, number> = {
+            'lunes': 0, 'martes': 1, 'miercoles': 2, 'miércoles': 2,
+            'jueves': 3, 'viernes': 4, 'sabado': 5, 'sábado': 5, 'domingo': 6
+          };
+
+          finalBlocks = workDays.map((day) => {
+            const normDay = day.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+            const dayOffset = daysMap[normDay] ?? 0;
+            const bDateObj = new Date(monday);
+            bDateObj.setDate(monday.getDate() + dayOffset);
+            const pad = (n: number) => n.toString().padStart(2, '0');
+            const dateStr = `${bDateObj.getFullYear()}-${pad(bDateObj.getMonth() + 1)}-${pad(bDateObj.getDate())}`;
+
+            return {
+              day_name: day,
+              start_time: workStartTime,
+              end_time: workEndTime,
+              block_date: `${dateStr}T${workStartTime}:00`,
+              notes: `Trabajo: ${title}`,
+              color: color,
+            };
+          });
         } else {
           // Bloque estándar en el día de la cita/evento sincronizado con el horario
           const [y, m, d] = singleDate.split('-').map(Number);

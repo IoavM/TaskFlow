@@ -22,6 +22,28 @@ def _block_from_deadline(deadline: datetime, notes: Optional[str] = None, color:
         color=color or "blue"
     )
 
+def _resolve_block_date(day_name: str, start_time: Optional[str], deadline: datetime) -> Optional[datetime]:
+    if not deadline or not day_name:
+        return None
+    days_map = {
+        "lunes": 0, "martes": 1, "miercoles": 2, "miércoles": 2,
+        "jueves": 3, "viernes": 4, "sabado": 5, "sábado": 5, "domingo": 6
+    }
+    norm_day = day_name.strip().lower()
+    if norm_day not in days_map:
+        return deadline
+    dl_day = deadline.weekday()
+    monday = deadline.date() - timedelta(days=dl_day)
+    target_day = monday + timedelta(days=days_map[norm_day])
+    s_hour, s_min = 14, 0
+    if start_time and ":" in start_time:
+        parts = start_time.split(":")
+        try:
+            s_hour, s_min = int(parts[0]), int(parts[1])
+        except ValueError:
+            pass
+    return datetime(target_day.year, target_day.month, target_day.day, s_hour, s_min, tzinfo=deadline.tzinfo)
+
 class TaskService:
     def __init__(self, db: Session):
         self.task_repo = TaskRepository(db)
@@ -39,13 +61,17 @@ class TaskService:
         )
 
         task_color = task_in.color or "blue"
+        is_rec = bool(task_in.is_recurring)
         if task_in.work_blocks and len(task_in.work_blocks) > 0:
             for block in task_in.work_blocks:
+                b_date = block.block_date
+                if not b_date and task_in.deadline and not is_rec:
+                    b_date = _resolve_block_date(block.day_name, block.start_time, task_in.deadline)
                 builder.add_work_block(
                     day_name=block.day_name,
                     start_time=block.start_time,
                     end_time=block.end_time,
-                    block_date=block.block_date,
+                    block_date=b_date,
                     notes=block.notes,
                     color=block.color or task_color
                 )
@@ -99,19 +125,25 @@ class TaskService:
 
         effective_color = task_in.color or task.color or "blue"
         effective_deadline = task_in.deadline or task.deadline
+        is_rec = task_in.is_recurring if task_in.is_recurring is not None else task.is_recurring
         if task_in.work_blocks is not None and len(task_in.work_blocks) > 0:
-            task.work_blocks = [
-                WorkBlock(
-                    day_name=b.day_name,
-                    start_time=b.start_time,
-                    end_time=b.end_time,
-                    block_date=b.block_date,
-                    notes=b.notes,
-                    completed=b.completed,
-                    color=b.color or effective_color
+            blocks = []
+            for b in task_in.work_blocks:
+                b_date = b.block_date
+                if not b_date and effective_deadline and not is_rec:
+                    b_date = _resolve_block_date(b.day_name, b.start_time, effective_deadline)
+                blocks.append(
+                    WorkBlock(
+                        day_name=b.day_name,
+                        start_time=b.start_time,
+                        end_time=b.end_time,
+                        block_date=b_date,
+                        notes=b.notes,
+                        completed=b.completed,
+                        color=b.color or effective_color
+                    )
                 )
-                for b in task_in.work_blocks
-            ]
+            task.work_blocks = blocks
         elif task_in.work_blocks is not None and len(task_in.work_blocks) == 0 and effective_deadline:
             task.work_blocks = [_block_from_deadline(effective_deadline, task.title, effective_color)]
         elif len(task.work_blocks) == 0 and effective_deadline:

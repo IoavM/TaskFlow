@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, LogOut, CheckCircle2, ListTodo, Sparkles, LayoutGrid, Calendar, Palette, PanelLeft, PanelLeftClose, X } from 'lucide-react';
+import { Plus, LogOut, CheckCircle2, ListTodo, Sparkles, LayoutGrid, Calendar, Palette, PanelLeft, PanelLeftClose, X, AlertCircle } from 'lucide-react';
 import { Schedule } from '../components/Schedule/Schedule';
 import { HourlyCalendar } from '../components/HourlyCalendar/HourlyCalendar';
 import { MiniCalendar } from '../components/MiniCalendar/MiniCalendar';
@@ -10,6 +10,7 @@ import { ConfirmModal } from '../components/ConfirmModal/ConfirmModal';
 import { LiquidPill } from '../components/LiquidGlass/LiquidPill';
 import { useToast } from '../context/ToastContext';
 import { api } from '../services/api';
+import { isTaskOverdue } from '../utils/dateUtils';
 import type { Task } from '../types';
 
 interface SchedulePageProps {
@@ -127,6 +128,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
   // Metrics
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((t) => t.status === 'completed').length;
+  const overdueTasks = tasks.filter((t) => isTaskOverdue(t)).length;
 
   return (
     <div className="min-h-screen relative flex flex-col text-[#0F172A] w-full max-w-full overflow-x-hidden">
@@ -316,6 +318,21 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ onLogout }) => {
                   <p className="text-base font-bold text-emerald-600">{completedTasks}</p>
                 </div>
               </div>
+
+              {overdueTasks > 0 && (
+                <>
+                  <div className="h-8 w-px bg-slate-200/80" />
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-rose-50/90 text-rose-600 border border-rose-100">
+                      <AlertCircle className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Vencidas</span>
+                      <p className="text-base font-bold text-rose-600">{overdueTasks}</p>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Dashboard View Switcher (Tareas por Día vs Google Calendar) */}
